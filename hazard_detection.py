@@ -12,3 +12,4 @@ class Hazard_Type_t:
 
 class Hazard_Param_t:
     MASS = "MASS"
+

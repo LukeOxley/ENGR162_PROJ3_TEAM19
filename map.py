@@ -1,11 +1,16 @@
-from tkinter.constants import W, X, Y
-
+# keeps track of significant points
+#   un-traveled path points
+#   traveled path points
+#   dead ends
+#   hazards and their type
+#   not perdiodically ran, just on a recording basis
+wall_width = 40 # in cm
 
 class Point:
     def __init__(self, x, y):
-        self.x = x 
-        self.y = y 
-    
+        self.x = x
+        self.y = y
+
     def __str__(self):
         return "X: "+str(self.x)+" Y: "+str(self.y)
 
@@ -21,7 +26,7 @@ class Pose:
         self.rotation = rotation
     def __str__(self):
         return str(self.point) + " at " + str(self.rotation)
-    
+
 class Intersection:
     def __init__(self, point, turn_directions_turned):
         self.point = point
@@ -43,5 +48,3 @@ class Turn_Direction_t:
     SOUTH = "SOUTH"
     WEST = "WEST"
     EAST = "EAST"
-
-

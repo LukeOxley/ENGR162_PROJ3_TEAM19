@@ -7,7 +7,9 @@
 # all of the raw functions will be called in updateSensors()
 
 
-def initializeSensors():
+def initSensors():
+    # reset encoders
+    # reset gyro heading to 0
     pass
 
 def updateSensors():

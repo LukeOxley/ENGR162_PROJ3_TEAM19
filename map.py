@@ -6,26 +6,6 @@
 #   not perdiodically ran, just on a recording basis
 wall_width = 40 # in cm
 
-class Point:
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
-
-    def __str__(self):
-        return "X: "+str(self.x)+" Y: "+str(self.y)
-
-class Rotation:
-    def __init__(self, deg):
-        self.deg = deg
-    def __str__(self):
-        return str(self.deg)+" degrees"
-
-class Pose:
-    def __init__(self, point, rotation):
-        self.point = point
-        self.rotation = rotation
-    def __str__(self):
-        return str(self.point) + " at " + str(self.rotation)
 
 class Intersection:
     def __init__(self, point, turn_directions_turned):
@@ -43,8 +23,19 @@ class Intersection:
         if(not self.containtsDirection(turn_direction)):
             self.turn_directions_turned.append(turn_direction)
 
-class Turn_Direction_t:
-    NORTH = "NORTH"
-    SOUTH = "SOUTH"
-    WEST = "WEST"
-    EAST = "EAST"
+# relative to field position
+class Turn_Direction_Field_t:
+    FWD = 0
+    LFT = 90
+    RHT = -90
+    BCK = 180
+
+# relative to robot position
+class Turn_Direction_Robot_t:
+    FWD = 0
+    LFT = 90
+    RHT = -90
+    BCK = 180
+        
+
+        

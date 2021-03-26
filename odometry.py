@@ -1,3 +1,4 @@
+from transforms import RigidTransform2d, Rotation2d, Translation2d
 import map
 import robot
 import sensors
@@ -5,34 +6,53 @@ import math
 
 # updates robot position on the coordinate plane
 # periodically ran
-# coordinate axes: forward positive y, right positive x
+# coordinate axes: forward positive x, right +/- y (idk, yet)
+# theta = 0 means forward
 
-current_pos = map.Pose(map.Point(0,0), map.Rotation(0))
-last_left_encoder_reading = 0
-last_right_encoder_reading = 0
-dt = robot.Robot.cycle_time
+class Odometry:
+    def __init__(self):
+        self.current_pos = RigidTransform2d(Translation2d(0,0), Rotation2d(0,0,False))
+        self.last_left_encoder_reading = 0
+        self.last_right_encoder_reading = 0
+        self.dt = robot.Robot.cycle_time 
 
-def initOdometry():
-    current_pos = map.Pose(map.Point(0,0), map.Rotation(0))
-    last_left_encoder_reading = 0
-    last_right_encoder_reading = 0
+    def reset(self):
+        self.current_pos = RigidTransform2d(Translation2d(0,0), Rotation2d(0,0,False))
 
-def updateOdometry():
-    # integrate average of wheel velocities * cos (theta) or sin(theta) for x and y
-    # use gyro to find change in angle, or you can use the difference in wheel speeds
-    # see: http://www.cs.columbia.edu/~allen/F15/NOTES/icckinematics.pdf pp. 3
 
-    delta_left = sensors.getLeftWheelDistance() - last_left_encoder_reading
-    delta_right = sensors.getRightWheelDistance() - last_right_encoder_reading
-    delta_theta = current_pos.rotation.deg - sensors.getHeading()
+    def updateOdometry(self):
 
-    # TODO: check if theta turns in the correct direction ...
-    delta_x = 0.5*(delta_left + delta_right) * math.sin(delta_theta * 3.14159 / 180)
-    delta_y = 0.5*(delta_left + delta_right) * math.cos(delta_theta * 3.14159 / 180)
+        left_distance = sensors.getLeftWheelDistance()
+        right_distance = sensors.getRightWheelDistance()
 
-    current_pos.point.x += delta_x
-    current_pos.point.y += delta_y
-    current_pos.rotation.deg += delta_theta
+        delta_left = left_distance - self.last_left_encoder_reading
+        delta_right = right_distance - self.last_right_encoder_reading
+        theta = Rotation2d.fromDegrees(sensors.getHeading)
 
-def getCurrentPos():
-    return current_pos
+        self.last_left_encoder_reading = left_distance
+        self.last_right_encoder_reading = right_distance
+
+        self.current_pos = self.integrateForwardKinematics(self.current_pos, delta_left, delta_right, theta)
+
+
+    def forwardKinematics(left, right, rads):
+        return RigidTransform2d.Delta((left + right)/2, 0, rads)
+
+    def integrateForwardKinematics(self, current_pose, left, right, heading):
+        with_gyro = self.forwardKinematics(left, right, 
+                                    current_pose.getRotation().inverse().rotateBy(heading).getRadians())
+        return current_pose.transformBy(RigidTransform2d.fromVelocity(with_gyro))
+
+    def getFieldToVehicle(self):
+        return self.current_pos
+
+    def getCurrentDirection(self):
+            heading = self.current_pos.getRotation().getDegrees()
+            if(heading <= 45 and heading >= -45):
+                return map.Turn_Direction_t.NORTH
+            elif(heading > 45 and heading <= 135):
+                return map.Turn_Direction_t.EAST
+            elif(heading < -45 and heading >= -135):
+                return map.Turn_Direction_t.WEST
+            else:
+                return map.Turn_Direction_t.SOUTH

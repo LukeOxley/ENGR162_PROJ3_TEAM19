@@ -1,6 +1,7 @@
 import time
 import threading
-import odometry
+from odometry import *
+from drive import *
 import sensors
 
 # combines everything together except for the gui
@@ -9,13 +10,14 @@ import sensors
 class Robot():
     cycle_time = 0.5#0.02
     enabled = False
+    odometry = Odometry()
+    drive = Drive()
 
     def __init__(self):
         #idk
         pass
 
     def initialize(self):
-        odometry.initOdometry()
         sensors.initSensors()
 
     def startLoop(self):
@@ -35,4 +37,11 @@ class Robot():
 
         while(self.enabled):
             print("robot main")
+            
+            # TODO: define special loop time
+            sensors.updateSensors()
+
+            self.drive.updateDrive()
+            self.odometry.updateOdometry()
+            
             time.sleep(self.cycle_time)

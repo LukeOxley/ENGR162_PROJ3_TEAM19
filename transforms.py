@@ -49,7 +49,7 @@ class RigidTransform2d:
             return RigidTransform2d(self.translation.interpolate(other.translation, x),
                                     self.rotation.interpolate(other.rotation, x))
     def __str__(self):
-        return str(self.translation) + str(self.rotation)
+        return str(self.translation) + ' ' + str(self.rotation)
 
 class Rotation2d:
     def __init__(self, x, y, normalize):
@@ -90,14 +90,14 @@ class Rotation2d:
         angle_diff = self.inverse().rotateBy(other_rotation).getRadians()
         return self.rotateBy(Rotation2d.fromRadians(angle_diff * x))
     def __str__(self):
-        return str(self.getDegrees()) + " degrees"
+        return "Degrees: {:.2f}".format(self.getDegrees()) 
 
 class Translation2d:
     def __init__(self, x, y):
         self.x = x
         self.y = y
     def __str__(self):
-        return "X: "+str(self.x)+" Y: "+str(self.y)
+        return "X: {:.2f}".format(self.x)+" Y: {:.2f}".format(self.y)
     def norm(self):
         return math.hypot(self.x, self.y)
     def getX(self):

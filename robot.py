@@ -1,28 +1,32 @@
 import time
 import threading
-from odometry import *
-from drive import *
-import sensors
+from tkinter import *
+from transforms import RigidTransform2d, Rotation2d, Translation2d
+import gui
+#from odometry import *
+#from drive import *
+#import sensors
 
 # combines everything together except for the gui
 # in charge of the periodic updating
 # loop start and stop controlled by gui
-class Robot():
-    cycle_time = 0.5#0.02
+class Robot(object):
+    cycle_time = 0.02
     enabled = False
-    odometry = Odometry()
-    drive = Drive()
+    #odometry = Odometry()
+    #drive = Drive()
 
-    def __init__(self):
-        #idk
-        pass
+    def __init__(self, gui):
+        self.gui = gui
+        
 
     def initialize(self):
-        sensors.initSensors()
+        #sensors.initSensors()
+        pass
 
     def startLoop(self):
         if(not self.enabled):
-            print("Starting Main Robot Loop")
+            self.gui.log_message("Starting Main Robot Loop")
             self.enabled = True
             self.initialize()
             self.main_thread = threading.Thread(target = self.loop)
@@ -30,18 +34,32 @@ class Robot():
 
     def stopLoop(self):
         if(self.enabled):
-            print("Stopping Main Robot Loop")
+            self.gui.log_message("Stopping Main Robot Loop")
             self.enabled = False
 
     def loop(self):
+        loop_counter = 0
+        self.current = RigidTransform2d(Translation2d(10, 10), Rotation2d.fromDegrees(0))
 
         while(self.enabled):
-            print("robot main")
+            loop_counter += 1
+
+            #self.gui.log_message("robot main")
             
             # TODO: define special loop time
-            sensors.updateSensors()
+            #sensors.updateSensors()
 
-            self.drive.updateDrive()
-            self.odometry.updateOdometry()
+            #self.drive.updateDrive()
+            #self.odometry.updateOdometry()
+            self.current = self.current.transformBy(RigidTransform2d(Translation2d(1,1),Rotation2d.fromDegrees(0.05)))
+
+            if(loop_counter % 10 == 0):
+                #location = self.odometry.getFieldToVehicle()
+                
+                self.gui.log_pos(self.current)
+
+
+            if(loop_counter >= 1000):
+                loop_counter = 0
             
             time.sleep(self.cycle_time)

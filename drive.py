@@ -18,8 +18,8 @@ class Drive():
     hallway_speed = 0.4
     kP = 0.05 # % of speed to add per cm in error
 
-    min_side_int_dist = 35
-    min_front_int_dist = 40
+    min_side_int_dist = hallway_width - 5
+    min_front_int_dist = hallway_width
 
     int_front_fwd_dist = (robot_length + hallway_width)/2 + robot_p
     int_side_fwd_dist = (robot_length + hallway_width)/2-robot_b+robot_p

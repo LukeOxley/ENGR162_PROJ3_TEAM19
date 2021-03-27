@@ -26,6 +26,8 @@ class Drive():
     intersection_forward_dist = 0
     int_exit_distance = hallway_width - int_front_fwd_dist + robot_b + 2 # where 2 is cm past the clearing of the side sensors
 
+    intersection_enabled = True
+
     class Drive_State_t:
         IDLE = "IDLE"
         INTERSECTION = "INTERSECTION"
@@ -124,4 +126,6 @@ class Drive():
     def getFrontAvailable(self):
         return sensors.getForwardWallDistance() > self.min_front_int_dist
 
+    def setEnableIntersection(self, state):
+        self.intersection_enabled = state
     

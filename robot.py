@@ -29,6 +29,7 @@ class Robot(object):
             self.gui.log_message("Starting Main Robot Loop")
             self.enabled = True
             self.initialize()
+            #self.drive.setEnableIntersection(self.gui.getIntersectionEnabled())
             self.main_thread = threading.Thread(target = self.loop)
             self.main_thread.start()
 
@@ -39,7 +40,7 @@ class Robot(object):
 
     def loop(self):
         loop_counter = 0
-        self.current = RigidTransform2d(Translation2d(10, 10), Rotation2d.fromDegrees(0))
+        self.current = RigidTransform2d(Translation2d(0, 0), Rotation2d.fromDegrees(0))
 
         while(self.enabled):
             loop_counter += 1
@@ -53,7 +54,7 @@ class Robot(object):
             #self.odometry.updateOdometry()
             self.current = self.current.transformBy(RigidTransform2d(Translation2d(1,1),Rotation2d.fromDegrees(0.05)))
 
-            if(loop_counter % 10 == 0):
+            if(loop_counter % 1 == 0):
                 #location = self.odometry.getFieldToVehicle()
                 
                 self.gui.log_pos(self.current)

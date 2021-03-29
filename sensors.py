@@ -57,7 +57,7 @@ def updateSensors():
     try:
       #frontWallDistance = grovepi.ultrasonicRead(frontUltraPin)
       #If we need to use the NXT on the brick pi
-      BP.get_sensor(BP.PORT_3)
+      frontWallDistance = BP.get_sensor(BP.PORT_3)
     except brickpi3.SensorError as error:
       print(error)
 

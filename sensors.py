@@ -133,6 +133,10 @@ def getIRLevelRight():
 def getMagneticLevel():
     return float(mag['x']), float(mag['y']), float(mag['z']) #returns them into component form
 
+def getMagneticMagnitude():
+    x, y, z = getMagneticLevel()
+    return math.sqrt(x^2+y^2+z^2)
+
 def getTouchSensor():
     return int(touchSensor); #1 for pressed 0 for not pressed
 
@@ -145,3 +149,24 @@ def setRightMotor(speed):
 def setMotorOff():
     setLeftMotor(0)
     setRightMotor(0)
+
+if __name__ == '__main__':
+  import time
+  initSensors()
+  while(True):
+    updateSensors()
+
+    # Clear screen to keep positions constant
+    print(chr(27)+'[2j')
+    print('\033c')
+    print('\x1bc')
+
+    print("------Sonics------")
+    print("Left: {:6.2f}, Front: {:6.2f}, Right: {:6.2f}".format(getLeftWallDistance(), getForwardWallDistance(), getRightWallDistance()))
+    print("--------Mag-------")
+    print("Magnitude: {:.3f}".format(getMagneticMagnitude()))
+    x, y, z = getMagneticLevel()
+    print("X: {:10.3f}, Y: {:10.3f}, Z: {:10.3f}".format(x, y, z))
+    print("--------IR--------")
+    print("Left: {:6.2f}, Right: {:6.2f}".format(getIRLevelLeft(), getIRLevelRight()))
+    time.sleep(0.25)

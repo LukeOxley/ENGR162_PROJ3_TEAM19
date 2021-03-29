@@ -58,6 +58,9 @@ class Robot(object):
                 #location = self.odometry.getFieldToVehicle()
                 
                 self.gui.log_pos(self.current)
+                self.gui.log_sonics(10, 40, 10)
+                self.gui.log_mag(0.0)
+                self.gui.log_ir(0.0, 0.0)
 
 
             if(loop_counter >= 1000):

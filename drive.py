@@ -75,49 +75,53 @@ class Drive():
     int_turn_speed = 0.2
 
     def handleIntersection(self):
-        if(self.int_state == 0):
-            # first call
-            # begin driving forward
-            sensors.setLeftMotor(self.int_st_speed)
-            sensors.setRightMotor(self.int_st_speed)
-            self.int_start_pos = Robot.odometry.getFieldToVehicle()
-            self.int_state += 1
-        elif(self.int_state == 1):
-            # distance between current pos and start pos
-            if(Robot.odometry.getFieldToVehicle().inverse().transformBy(self.int_start_pos).getTranslation().norm() >= self.intersection_forward_dist):
-                # the current position should be approximately the center of the intersection
-                sensors.setMotorOff()
+        if(self.intersection_enabled):
+            if(self.int_state == 0):
+                # first call
+                # begin driving forward
+                sensors.setLeftMotor(self.int_st_speed)
+                sensors.setRightMotor(self.int_st_speed)
+                self.int_start_pos = Robot.odometry.getFieldToVehicle()
                 self.int_state += 1
-                # TODO: log current pos as an intersection point
-                # determine what the best direction to go is
-                # ensure you also re-look at possible directions
-                self.int_turn_direction = map.Turn_Direction_Robot_t.FWD
-                # based on direction, turn if necessary
-                if(self.int_turn_direction == map.Turn_Direction_Robot_t.FWD):
-                    self.int_state += 2 # skip turning
-                else:
-                    # TODO: set motor power for turning
-                    self.int_start_heading = Robot.odometry.getFieldToVehicle().getRotation().getDegrees()
+            elif(self.int_state == 1):
+                # distance between current pos and start pos
+                if(Robot.odometry.getFieldToVehicle().inverse().transformBy(self.int_start_pos).getTranslation().norm() >= self.intersection_forward_dist):
+                    # the current position should be approximately the center of the intersection
+                    sensors.setMotorOff()
+                    self.int_state += 1
+                    # TODO: log current pos as an intersection point
+                    # determine what the best direction to go is
+                    # ensure you also re-look at possible directions
+                    self.int_turn_direction = map.Turn_Direction_Robot_t.FWD
+                    # based on direction, turn if necessary
+                    if(self.int_turn_direction == map.Turn_Direction_Robot_t.FWD):
+                        self.int_state += 2 # skip turning
+                    else:
+                        # TODO: set motor power for turning
+                        self.int_start_heading = Robot.odometry.getFieldToVehicle().getRotation().getDegrees()
+                        self.int_state += 1
+
+            elif(self.int_state == 2):
+                if(math.fabs(self.int_start_heading - Robot.odometry.getFieldToVehicle().getRotation().getDegrees()) >= self.int_turn_angle ):
+                    # turning complte
+                    sensors.setMotorOff()
                     self.int_state += 1
 
-        elif(self.int_state == 2):
-            if(math.fabs(self.int_start_heading - Robot.odometry.getFieldToVehicle().getRotation().getDegrees()) >= self.int_turn_angle ):
-                # turning complte
-                sensors.setMotorOff()
+            elif(self.int_state == 3):
+                # drive forward to exit the intersection
+                sensors.setLeftMotor(self.int_st_speed)
+                sensors.setRightMotor(self.int_st_speed)
+                self.int_start_pos = Robot.odometry.getFieldToVehicle()
                 self.int_state += 1
 
-        elif(self.int_state == 3):
-            # drive forward to exit the intersection
-            sensors.setLeftMotor(self.int_st_speed)
-            sensors.setRightMotor(self.int_st_speed)
-            self.int_start_pos = Robot.odometry.getFieldToVehicle()
-            self.int_state += 1
+            elif(self.int_state == 4):
+                # distance between current pos and start pos
+                if(Robot.odometry.getFieldToVehicle().inverse().transformBy(self.int_start_pos).getTranslation().norm() >= self.int_exit_distance):
+                    sensors.setMotorOff()
+                    self.state = self.Drive_State_t.HALLWAY_FOLLOWING
+        else:
+            self.state = self.Drive_State_t.HALLWAY_FOLLOWING
 
-        elif(self.int_state == 4):
-            # distance between current pos and start pos
-            if(Robot.odometry.getFieldToVehicle().inverse().transformBy(self.int_start_pos).getTranslation().norm() >= self.int_exit_distance):
-                sensors.setMotorOff()
-                self.state = self.Drive_State_t.HALLWAY_FOLLOWING
         
     def getLeftAvailable(self):
         return sensors.getLeftWallDistance() > self.min_side_int_dist

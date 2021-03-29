@@ -12,7 +12,8 @@ class GUI(Frame): # Extending Frame
     wall_width_cm = 40
     num_cols = 5
     canv_width_px = 400
-    grid_width_px = 325
+    grid_width_px = 300
+    behind_distance = wall_width_cm / 2
     coord_to_grid_origin = Translation2d(0,0)
 
     def __init__(self):
@@ -22,6 +23,7 @@ class GUI(Frame): # Extending Frame
         self.master.title("GEARS")
         self.createButtons()
         self.initUI()
+        self.initSensorPannel()
         self.log_message("GEARS Console")
         self.log_message("Press 'Start Run' to enable!")
 
@@ -72,6 +74,13 @@ class GUI(Frame): # Extending Frame
         self.num_cols_spin.grid(row=2, column=1)
         spin_frame.grid(row=4, column=0)
 
+        Label(spin_frame, text='Behind Start Dist').grid(row=2, column=2)
+        behind_var = IntVar()
+        behind_var.set(int(self.behind_distance))
+        self.behind_spin = Spinbox(spin_frame, from_=0, to=self.wall_width_cm, width=5, textvariable=behind_var)
+        self.behind_spin.grid(row=2, column=3)
+        spin_frame.grid(row=4, column=0)
+
         self.refresh = Button(control_frame,text='Refresh Grid',width=10)
         self.refresh.grid(row=5, column=0)
         self.refresh.bind('<Button-1>', self.makeGridButtonEvent)
@@ -90,6 +99,33 @@ class GUI(Frame): # Extending Frame
         self.makeGrid()
         self.canvas.grid(row=0, column=1)
 
+    def initSensorPannel(self):
+        sensor_frame = Frame(self.master)
+
+        Label(sensor_frame, text='---Sonic Readings---').grid(row=0, column=0)
+        self.front_pos_lbl = Label(sensor_frame, text='FD: ') 
+        self.front_pos_lbl.grid(row=1, column=0)
+        side_frame = Frame(sensor_frame)
+        self.left_pos_lbl = Label(side_frame, text='LD: ') 
+        self.left_pos_lbl.grid(row=0, column=0)
+        self.right_pos_lbl = Label(side_frame, text='RD: ') 
+        self.right_pos_lbl.grid(row=0, column=1)
+        side_frame.grid(row=2, column=0)
+
+        Label(sensor_frame, text='Magnetometer Reading').grid(row=3, column=0)
+        self.mag_lbl = Label(sensor_frame, text='Mag:')
+        self.mag_lbl.grid(row=4, column=0)
+
+        Label(sensor_frame, text='----IR Readings----').grid(row=5, column=0)
+        ir_side_frame = Frame(sensor_frame)
+        self.ir_left_lbl = Label(ir_side_frame, text='Left:')
+        self.ir_left_lbl.grid(row=1, column=0)
+        self.ir_right_lbl = Label(ir_side_frame, text='Right:')
+        self.ir_right_lbl.grid(row=1, column=1)
+        ir_side_frame.grid(row=6, column=0)
+
+        sensor_frame.grid(row=0, column=2)
+
     def makeGridButtonEvent(self, event):
         self.makeGrid()
     
@@ -97,10 +133,12 @@ class GUI(Frame): # Extending Frame
         self.canvas.delete("all")
         self.num_cols = int(self.num_cols_spin.get())
         wall_width_px = self.cmToPixels(self.wall_width_cm)
+        self.behind_distance = int(self.behind_spin.get())
+        behind_distance_px = self.cmToPixels(self.behind_distance)
         b = int((self.canv_width_px - self.grid_width_px) / 2)
         p = wall_width_px / 2
         self.coord_to_grid_origin.setX(b + p + float(self.x_start_spin.get()) * wall_width_px)
-        self.coord_to_grid_origin.setY(b + float(self.y_start_spin.get()) * wall_width_px)
+        self.coord_to_grid_origin.setY(b + float(self.y_start_spin.get()) * wall_width_px - self.behind_distance)
 
         spacing = int(wall_width_px)
 
@@ -111,6 +149,18 @@ class GUI(Frame): # Extending Frame
     def log_message(self, message):
         self.txt_box.insert(INSERT, message + '\n')
         self.txt_box.see(INSERT)
+    
+    def log_sonics(self, left, front, right):
+        self.front_pos_lbl.configure(text="FD: {:.2f}".format(front))
+        self.left_pos_lbl.configure(text="LD: {:.2f}".format(left))
+        self.right_pos_lbl.configure(text="RD: {:.2f}".format(right))
+    
+    def log_mag(self, mag):
+        self.mag_lbl.configure(text="Mag: {:.2f}".format(mag))
+
+    def log_ir(self, left, right):
+        self.ir_left_lbl.configure(text="Left: {:.2f}".format(left))
+        self.ir_right_lbl.configure(text="Right: {:.2f}".format(right))
     
     def plot_location(self, translation):
         translation_px = Translation2d(self.cmToPixels(translation.getX()), 
@@ -133,7 +183,7 @@ class GUI(Frame): # Extending Frame
 
 def main():
     master = Tk()
-    master.geometry("750x410")
+    master.geometry("875x410")
     gui = GUI()
     master.mainloop()
 

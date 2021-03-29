@@ -1,5 +1,14 @@
 import math
 
+#   CODE FROM ECTERNAL SOURCE
+# Source: https://github.com/Castle6498/2020InfiniteRecharge/tree/c64b242a7fddbe956384688d786b09b5793ee135/src/main/java/frc/lib/util
+# Data accessed: 3/29/21
+# The following code is not an exact replica! It was translated
+# from java to python, put contains all of the same concepts.
+# The source of the code is essential from FRC team 254's implementation
+# The following code is meant to make transforms in a 2d coordinate 
+# plane easier to deal with
+
 class RigidTransform2d:
 
     class Delta:
@@ -126,3 +135,5 @@ class Translation2d:
     def extrapolate(self, other_translation, x):
         return Translation2d(x * (other_translation.x - self.x) + self.x, 
                              x * (other_translation.y - self.y) + self.y)
+
+# END CODE FROM EXTERNAL SOURCE

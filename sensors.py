@@ -1,6 +1,6 @@
 # Goal is to periodically update raw sensor data
 # instead of multiple times in one loop cycle
-# This prevents spamming of the sensors 
+# This prevents spamming of the sensors
 # prolly want some sort of try catch on each sensor read
 # for the raw data, use like updateHeadingRaw -> this will
 # read the actual sensor and update the corresponding variable
@@ -34,14 +34,14 @@ def updateSensors():
     global heading, leftEncoder, rightEncoder, leftWallDistance
     global rightWallDistance, frontWallDistance, mag
     global irLevelLeft, irLevelRight, touchSensor
-    
+
     #set based on robot (grove pi ports)
     leftUltraPin = 1
     rightUltraPin = 2
     frontUltraPin = 3
     irPinLeft = 4
     irPinRight = 5
-    
+
     #Plug in the left motor to port A, the right to port B, touch sensor
     #to port 1, Gyro to port 2 and if required the NXT ultra sonic to port 3
     try:
@@ -55,11 +55,11 @@ def updateSensors():
       print ("Error:{}".format(e))
 
     try:
-      frontWallDistance = grovepi.ultrasonicRead(frontUltraPin)
+      #frontWallDistance = grovepi.ultrasonicRead(frontUltraPin)
       #If we need to use the NXT on the brick pi
-      #BP.get_sensor(BP.PORT_3)
-    except Exception as e:
-      print ("Error:{}".format(e))
+      BP.get_sensor(BP.PORT_3)
+    except brickpi3.SensorError as error:
+      print(error)
 
     try:
       leftEncoder = BP.get_motor_encoder(BP.PORT_A)
@@ -112,7 +112,7 @@ def getRightWheelDistance():
     radius = 0 #radius of the wheels (cm)
     theta = float(rightEncoder) # degrees
     rotations = theta / 360
-    distance = rotations * radius * 2 * math.pi 
+    distance = rotations * radius * 2 * math.pi
     return distance; # cm
 
 def getLeftWallDistance():
@@ -142,7 +142,7 @@ def getTouchSensor():
 
 def setLeftMotor(speed):
     BP.set_motor_dps(BP.PORT_A, 1050*speed)
-    
+
 def setRightMotor(speed):
     BP.set_motor_dps(BP.PORT_B, 1050*speed)
 

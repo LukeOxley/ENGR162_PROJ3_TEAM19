@@ -102,14 +102,14 @@ def getHeading():
     return map.Rotation(float(-heading)); #rotation (deg)
 
 def getLeftWheelDistance():
-    radius = 0 #radius of the wheels (cm)
+    radius = 2.75 #radius of the wheels (cm)
     theta = float(leftEncoder) # degrees
     rotations = theta / 360
     distance = rotations * radius * 2 * math.pi #cm
     return distance; # cm
 
 def getRightWheelDistance():
-    radius = 0 #radius of the wheels (cm)
+    radius = 2.75 #radius of the wheels (cm)
     theta = float(rightEncoder) # degrees
     rotations = theta / 360
     distance = rotations * radius * 2 * math.pi

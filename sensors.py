@@ -9,10 +9,18 @@ from MPU9250 import MPU9250
 import brickpi3 # import the BrickPi3 drivers
 import grovepi
 import math
+from transforms import Rotation2d
 
 BP = brickpi3.BrickPi3()
+mpu = MPU9250()
+heading_offset = 0
 
 def initSensors():
+    global BP
+    global heading_offset
+
+    BP.set_sensor_type(BP.PORT_2, BP.SENSOR_TYPE.EV3_GYRO_ABS)
+    BP.set_sensor_type(BP.PORT_3, BP.SENSOR_TYPE.EV3_ULTRASONIC_CM)
     #Reset Left wheel encoder to 0
     try:
       BP.offset_motor_encoder(BP.PORT_A, BP.get_motor_encoder(BP.PORT_A))
@@ -25,7 +33,7 @@ def initSensors():
       pass
     # reset gyro heading to 0
     try:
-      BP.offset_sensor(BP.PORT_1, BP.get_sensor(BP.PORT_1))
+      heading_offset = BP.get_sensor(BP.PORT_2)
     except brickpi3.SensorError as error:
       print(error)
 
@@ -35,12 +43,16 @@ def updateSensors():
     global rightWallDistance, frontWallDistance, mag
     global irLevelLeft, irLevelRight, touchSensor
 
+    global BP
+    global mpu
+
     #set based on robot (grove pi ports)
     leftUltraPin = 1
     rightUltraPin = 2
-    frontUltraPin = 3
-    irPinLeft = 4
-    irPinRight = 5
+    irPinLeft = 0
+    irPinRight = 1
+
+    period = 0.002
 
     #Plug in the left motor to port A, the right to port B, touch sensor
     #to port 1, Gyro to port 2 and if required the NXT ultra sonic to port 3
@@ -49,57 +61,77 @@ def updateSensors():
     except Exception as e:
       print ("Error:{}".format(e))
 
+    time.sleep(period)
+
     try:
       rightWallDistance = grovepi.ultrasonicRead(rightUltraPin)
     except Exception as e:
       print ("Error:{}".format(e))
+
+    time.sleep(period)
 
     try:
       #frontWallDistance = grovepi.ultrasonicRead(frontUltraPin)
       #If we need to use the NXT on the brick pi
       frontWallDistance = BP.get_sensor(BP.PORT_3)
     except brickpi3.SensorError as error:
-      print(error)
+      frontWallDistance = 0
+      print("Front Sonic: " + str(error))
+
+    time.sleep(period)
 
     try:
       leftEncoder = BP.get_motor_encoder(BP.PORT_A)
     except IOError as error:
-      print(error)
+      print("Left Encoder: " + str(error))
+
+    time.sleep(period)
 
     try:
       rightEncoder = BP.get_motor_encoder(BP.PORT_B)
     except IOError as error:
-      print(error)
+      print("Right Encoder: " + str(error))
+
+    time.sleep(period)
 
     try:
-      mag = MPU9250.readMagnet()
+      mag = mpu.readMagnet()
     except:     #not sure what exception error for this would be
       pass
 
-    try:
-      irLevelLeft = grovepi.analogRead(irPinLeft)[0]; #reads the left IR sensor
-    except brickpi3.SensorError as error:
-      print(error)
+    time.sleep(period)
 
     try:
-      irLevelRight = grovepi.analogRead(irPinRight)[0]; #reads the right IR sensor
+      irLevelLeft = grovepi.analogRead(irPinLeft); #reads the left IR sensor
     except brickpi3.SensorError as error:
-      print(error)
+      print("Left IR: " + str(error))
+
+    time.sleep(period)
 
     try:
-      heading = BP.get_sensor(BP.PORT_2)
+      irLevelRight = grovepi.analogRead(irPinRight); #reads the right IR sensor
     except brickpi3.SensorError as error:
-      print(error)
+      print("Right IR: " + str(error))
+
+    time.sleep(period)
 
     try:
-      touchSensor = BP.get_sensor(BP.PORT_1) #1 or 0
+      heading = BP.get_sensor(BP.PORT_2) - heading_offset
     except brickpi3.SensorError as error:
-      print(error)
+      heading = 0
+      print("Heading:" + str(error))
+
+    time.sleep(period)
+
+    # try:
+    #   touchSensor = BP.get_sensor(BP.PORT_1) #1 or 0
+    # except brickpi3.SensorError as error:
+    #   print(error)
 
 def getHeading():
   # TODO: check if output is +90 for cw
   # TODO: check it does not go above 179!!!
-    return map.Rotation(float(-heading)); #rotation (deg)
+    return Rotation2d.fromDegrees(float(-heading))
 
 def getLeftWheelDistance():
     radius = 2.75 #radius of the wheels (cm)
@@ -116,29 +148,35 @@ def getRightWheelDistance():
     return distance; # cm
 
 def getLeftWallDistance():
+    global leftWallDistance
     return float(leftWallDistance) # cm
 
 def getForwardWallDistance():
+    global frontWallDistance
     return float(frontWallDistance) # cm
 
 def getRightWallDistance():
+    global rightWallDistance
     return float(rightWallDistance) # cm
 
 def getIRLevelLeft():
+    global irLevelLeft
     return float(irLevelLeft); # not sure on the units
 
 def getIRLevelRight():
+    global irLevelRight
     return float(irLevelRight); # not sure on the units
 
 def getMagneticLevel():
+    global mag
     return float(mag['x']), float(mag['y']), float(mag['z']) #returns them into component form
 
 def getMagneticMagnitude():
     x, y, z = getMagneticLevel()
-    return math.sqrt(x^2+y^2+z^2)
+    return math.sqrt(math.pow(x, 2) + math.pow(y, 2) + math.pow(z, 2))
 
-def getTouchSensor():
-    return int(touchSensor); #1 for pressed 0 for not pressed
+# def getTouchSensor():
+#     return int(touchSensor); #1 for pressed 0 for not pressed
 
 def setLeftMotor(speed):
     BP.set_motor_dps(BP.PORT_A, 1050*speed)
@@ -169,4 +207,6 @@ if __name__ == '__main__':
     print("X: {:10.3f}, Y: {:10.3f}, Z: {:10.3f}".format(x, y, z))
     print("--------IR--------")
     print("Left: {:6.2f}, Right: {:6.2f}".format(getIRLevelLeft(), getIRLevelRight()))
+    print("-------GYRO-------")
+    print("Heading: {:6.2f}".format(getHeading().getDegrees()))
     time.sleep(0.25)

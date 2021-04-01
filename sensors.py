@@ -49,6 +49,7 @@ def updateSensors():
     #set based on robot (grove pi ports)
     leftUltraPin = 1
     rightUltraPin = 2
+    frontUltraPin = 3
     irPinLeft = 0
     irPinRight = 1
 
@@ -71,12 +72,9 @@ def updateSensors():
     time.sleep(period)
 
     try:
-      #frontWallDistance = grovepi.ultrasonicRead(frontUltraPin)
-      #If we need to use the NXT on the brick pi
-      frontWallDistance = BP.get_sensor(BP.PORT_3)
-    except brickpi3.SensorError as error:
-      frontWallDistance = 0
-      print("Front Sonic: " + str(error))
+      frontWallDistance = grovepi.ultrasonicRead(frontUltraPin)
+    except Exception as e:
+      print ("Error:{}".format(e))
 
     time.sleep(period)
 

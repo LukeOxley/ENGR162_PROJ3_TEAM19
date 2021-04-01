@@ -98,7 +98,7 @@ def updateSensors():
 
 def getHeading():
   # TODO: check if output is +90 for cw
-  # TODO: check it does not go above 179
+  # TODO: check it does not go above 179!!!
     return map.Rotation(float(-heading)); #rotation (deg)
 
 def getLeftWheelDistance():

@@ -7,6 +7,13 @@ import gui
 #from drive import *
 #import sensors
 
+# List of things TODO:
+# zero position once it enters the maze?
+# delivery sequence?
+# test sensors are outputting correctly
+# implement hazard avoidance
+# implement hazard tracking
+
 # combines everything together except for the gui
 # in charge of the periodic updating
 # loop start and stop controlled by gui
@@ -30,6 +37,7 @@ class Robot(object):
             self.enabled = True
             self.initialize()
             #self.drive.setEnableIntersection(self.gui.getIntersectionEnabled())
+            #self.drive.setEnableEntering(self.gui.getEnteringEnabled())
             self.main_thread = threading.Thread(target = self.loop)
             self.main_thread.start()
 
@@ -47,8 +55,10 @@ class Robot(object):
 
             #self.gui.log_message("robot main")
             
-            # TODO: define special loop time
-            #sensors.updateSensors()
+            # Able to decrease sensor update frequency
+            if(loop_counter % 1 == 0):
+                #sensors.updateSensors()
+                pass
 
             #self.drive.updateDrive()
             #self.odometry.updateOdometry()

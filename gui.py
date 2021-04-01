@@ -51,10 +51,16 @@ class GUI(Frame): # Extending Frame
         self.stopButton.bind('<Button-1>', self.stopButtonAction)
         self.stopButton["state"] = "disabled"
 
-        self.chk_state = BooleanVar()
-        self.chk_state.set(True)
-        self.chk = Checkbutton(control_frame, text='Enable Intersection', var=self.chk_state)
-        self.chk.grid(row=2, column=0)
+        chk_frame = Frame(control_frame)
+        self.chk_state_intersection_enabled = BooleanVar()
+        self.chk_state_intersection_enabled .set(True)
+        self.chk_int = Checkbutton(chk_frame, text='Enable Intersection', var=self.chk_state_intersection_enabled )
+        self.chk_int.grid(row=0, column=0)
+        self.chk_state_entering_enabled = BooleanVar()
+        self.chk_state_entering_enabled .set(True)
+        self.chk_ent = Checkbutton(chk_frame, text='Enable Entering', var=self.chk_state_entering_enabled )
+        self.chk_ent.grid(row=0, column=1)
+        chk_frame.grid(row=2, column=0)
 
         self.pos_lbl = Label(control_frame, text='Current Pose: ')
         self.pos_lbl.grid(row=3, column = 0)
@@ -138,7 +144,7 @@ class GUI(Frame): # Extending Frame
         b = int((self.canv_width_px - self.grid_width_px) / 2)
         p = wall_width_px / 2
         self.coord_to_grid_origin.setX(b + p + float(self.x_start_spin.get()) * wall_width_px)
-        self.coord_to_grid_origin.setY(b + float(self.y_start_spin.get()) * wall_width_px - self.behind_distance)
+        self.coord_to_grid_origin.setY(b + float(self.y_start_spin.get()) * wall_width_px - behind_distance_px)
 
         spacing = int(wall_width_px)
 
@@ -176,7 +182,10 @@ class GUI(Frame): # Extending Frame
         self.pos_lbl.configure(text="Current Pose: "+str(rigid_transform))
 
     def getIntersectionEnabled(self):
-        return self.chk_state.get()
+        return self.chk_state_intersection_enabled.get()
+    
+    def getEnteringEnabled(self):
+        return self.chk_state_entering_enabled.get()
     
     def cmToPixels(self, l):
         return l * self.grid_width_px / (self.wall_width_cm  * self.num_cols)

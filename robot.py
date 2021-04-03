@@ -3,9 +3,9 @@ import threading
 from tkinter import *
 from transforms import RigidTransform2d, Rotation2d, Translation2d
 import gui
-#from odometry import *
-#from drive import *
-#import sensors
+from odometry import *
+from drive import *
+import sensors
 
 # List of things TODO:
 # zero position once it enters the maze?
@@ -20,15 +20,15 @@ import gui
 class Robot(object):
     cycle_time = 0.02
     enabled = False
-    #odometry = Odometry()
-    #drive = Drive()
+    odometry = Odometry()
+    drive = Drive()
 
     def __init__(self, gui):
         self.gui = gui
         
 
     def initialize(self):
-        #sensors.initSensors()
+        sensors.initSensors()
         pass
 
     def startLoop(self):
@@ -36,8 +36,8 @@ class Robot(object):
             self.gui.log_message("Starting Main Robot Loop")
             self.enabled = True
             self.initialize()
-            #self.drive.setEnableIntersection(self.gui.getIntersectionEnabled())
-            #self.drive.setEnableEntering(self.gui.getEnteringEnabled())
+            self.drive.setEnableIntersection(self.gui.getIntersectionEnabled())
+            self.drive.setEnableEntering(self.gui.getEnteringEnabled())
             self.main_thread = threading.Thread(target = self.loop)
             self.main_thread.start()
 
@@ -53,19 +53,19 @@ class Robot(object):
         while(self.enabled):
             loop_counter += 1
 
-            #self.gui.log_message("robot main")
+            self.gui.log_message("robot main")
             
             # Able to decrease sensor update frequency
             if(loop_counter % 1 == 0):
-                #sensors.updateSensors()
+                sensors.updateSensors()
                 pass
 
-            #self.drive.updateDrive()
-            #self.odometry.updateOdometry()
+            self.drive.updateDrive()
+            self.odometry.updateOdometry()
             self.current = self.current.transformBy(RigidTransform2d(Translation2d(1,1),Rotation2d.fromDegrees(0.05)))
 
             if(loop_counter % 1 == 0):
-                #location = self.odometry.getFieldToVehicle()
+                location = self.odometry.getFieldToVehicle()
                 
                 self.gui.log_pos(self.current)
                 self.gui.log_sonics(10, 40, 10)

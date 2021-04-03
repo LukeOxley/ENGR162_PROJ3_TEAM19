@@ -3,6 +3,7 @@
 #As either a magnitude or in component form
 
 import sensors
+import time
 
 ir_spacing = 9.5 # cm
 
@@ -179,4 +180,4 @@ def baseOnDistanceComponentsIMU(): #Magnitude
 #baseOnDistanceIR()
 #baseOnDistanceComponentsIR()
 #baseOnDistanceIMU()
-#baseOnDistanceComponentsIMU()
+baseOnDistanceComponentsIMU()

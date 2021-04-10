@@ -33,10 +33,16 @@ def initSensors():
     except:
       pass
     # reset gyro heading to 0
-    try:
-      heading_offset = BP.get_sensor(BP.PORT_2)
-    except brickpi3.SensorError as error:
-      print(error)
+    print("Calibrating gyro")
+    success = False
+    while(not success):
+      try:
+        heading_offset = 90 + BP.get_sensor(BP.PORT_2)
+        success = True
+      except brickpi3.SensorError as error:
+        #print(error)
+        pass
+    print("Gyro Calibrated")
 
 def updateSensors():
     #Gives program wide scope
@@ -48,9 +54,9 @@ def updateSensors():
     global mpu
 
     #set based on robot (grove pi ports)
-    leftUltraPin = 1
-    rightUltraPin = 2
-    frontUltraPin = 3
+    leftUltraPin = 2
+    rightUltraPin = 7
+    frontUltraPin = 4
     irPinLeft = 0
     irPinRight = 1
 
@@ -134,14 +140,14 @@ def getHeading():
 
 def getLeftWheelDistance():
     radius = 2.75 #radius of the wheels (cm)
-    theta = float(leftEncoder) # degrees
+    theta = float(leftEncoder) * 40.0 / 24.0 # degrees (40 to 24 ratio)
     rotations = theta / 360
     distance = rotations * radius * 2 * math.pi #cm
     return distance; # cm
 
 def getRightWheelDistance():
     radius = 2.75 #radius of the wheels (cm)
-    theta = float(rightEncoder) # degrees
+    theta = float(rightEncoder) * 40.0 / 24.0 # degrees (40 to 24 ratio)
     rotations = theta / 360
     distance = rotations * radius * 2 * math.pi
     return distance; # cm
@@ -186,6 +192,11 @@ def setRightMotor(speed):
 def setMotorOff():
     setLeftMotor(0)
     setRightMotor(0)
+  
+def shutdown():
+  print("Turning Off Sensors")
+  setMotorOff()
+  BP.reset_all()
 
 if __name__ == '__main__':
   import time

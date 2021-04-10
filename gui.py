@@ -130,6 +130,10 @@ class GUI(Frame): # Extending Frame
         self.ir_right_lbl.grid(row=1, column=1)
         ir_side_frame.grid(row=6, column=0)
 
+        Label(sensor_frame, text='-----Drive State-----').grid(row=7, column=0)
+        self.drive_lbl = Label(sensor_frame, text='Drive State:')
+        self.drive_lbl.grid(row=8, column=0)
+
         sensor_frame.grid(row=0, column=2)
 
     def makeGridButtonEvent(self, event):
@@ -167,6 +171,10 @@ class GUI(Frame): # Extending Frame
     def log_ir(self, left, right):
         self.ir_left_lbl.configure(text="Left: {:.2f}".format(left))
         self.ir_right_lbl.configure(text="Right: {:.2f}".format(right))
+
+    def log_state(self, drive_state):
+        self.drive_lbl.configure(text="Drive State: {:s}".format(drive_state))
+
     
     def plot_location(self, translation):
         translation_px = Translation2d(self.cmToPixels(translation.getX()), 
@@ -180,7 +188,7 @@ class GUI(Frame): # Extending Frame
     def log_pos(self, rigid_transform):
         self.plot_location(rigid_transform.getTranslation())
         self.pos_lbl.configure(text="Current Pose: "+str(rigid_transform))
-
+    
     def getIntersectionEnabled(self):
         return self.chk_state_intersection_enabled.get()
     
@@ -192,7 +200,7 @@ class GUI(Frame): # Extending Frame
 
 def main():
     master = Tk()
-    master.geometry("875x410")
+    master.geometry("900x410")
     gui = GUI()
     master.mainloop()
 

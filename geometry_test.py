@@ -58,4 +58,17 @@ print(current)
 print(current.getTranslation().norm())
 plt.scatter(current.getTranslation().getX(), current.getTranslation().getY())
 
-plt.show()
+#plt.show()
+
+curr = Rotation2d.fromDegrees(45)
+start = Rotation2d.fromDegrees(-45)
+
+offset = start.inverse().rotateBy(curr)
+print(offset)
+
+curr = RigidTransform2d(Translation2d(-480, 120), Rotation2d(1, 1, True))
+delta = RigidTransform2d(Translation2d(-20, 0), Rotation2d(1,0, False))
+print(curr)
+print(delta)
+result = curr.transformBy(delta)
+print(result)

@@ -3,8 +3,8 @@ import threading
 from tkinter import *
 from transforms import RigidTransform2d, Rotation2d, Translation2d
 import gui
-from odometry import *
-from drive import *
+from odometry import Odometry
+from drive import Drive
 import sensors
 
 # List of things TODO:
@@ -20,11 +20,11 @@ import sensors
 class Robot(object):
     cycle_time = 0.02
     enabled = False
-    odometry = Odometry()
-    drive = Drive()
+    odometry = Odometry(cycle_time)
 
     def __init__(self, gui):
         self.gui = gui
+        self.drive = Drive(self, gui)
         
 
     def initialize(self):
@@ -36,6 +36,8 @@ class Robot(object):
             self.gui.log_message("Starting Main Robot Loop")
             self.enabled = True
             self.initialize()
+            self.drive.initDrive()
+            self.odometry.reset()
             self.drive.setEnableIntersection(self.gui.getIntersectionEnabled())
             self.drive.setEnableEntering(self.gui.getEnteringEnabled())
             self.main_thread = threading.Thread(target = self.loop)
@@ -53,7 +55,7 @@ class Robot(object):
         while(self.enabled):
             loop_counter += 1
 
-            self.gui.log_message("robot main")
+            #self.gui.log_message("robot main")
             
             # Able to decrease sensor update frequency
             if(loop_counter % 1 == 0):
@@ -62,18 +64,21 @@ class Robot(object):
 
             self.drive.updateDrive()
             self.odometry.updateOdometry()
-            self.current = self.current.transformBy(RigidTransform2d(Translation2d(1,1),Rotation2d.fromDegrees(0.05)))
+            #self.current = self.current.transformBy(RigidTransform2d(Translation2d(1,1),Rotation2d.fromDegrees(0.05)))
 
             if(loop_counter % 1 == 0):
-                location = self.odometry.getFieldToVehicle()
+                self.current = self.odometry.getFieldToVehicle()
                 
                 self.gui.log_pos(self.current)
-                self.gui.log_sonics(10, 40, 10)
-                self.gui.log_mag(0.0)
+                self.gui.log_sonics(sensors.getLeftWallDistance(), sensors.getForwardWallDistance(), sensors.getRightWallDistance())
+                self.gui.log_mag(sensors.getMagneticMagnitude())
                 self.gui.log_ir(0.0, 0.0)
+                self.gui.log_state(self.drive.state)
 
 
             if(loop_counter >= 1000):
                 loop_counter = 0
             
             time.sleep(self.cycle_time)
+        
+        sensors.shutdown()

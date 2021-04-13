@@ -15,10 +15,12 @@ class Drive():
     hallway_width = 40 #cm
     robot_width = 21 # cm
     robot_length = 25 #cm
-    robot_b = 12 # cm distance between front and side sensor
+    robot_b = 14 #12 # cm distance between front and side sensor
     robot_p = 0 # cm distance between center and pivot point (make <0 if pivot infront of center)
     hallway_speed = 0.15
-    kP = 0.1 #0.05 # % of speed to add per cm in error
+    kP = 0.4 #0.05 # % of speed to add per cm in error
+    kLimit = 0.2 # max % of speed to add (error * kP)
+    kPHeading = 0.015 #0.008
 
     min_side_int_dist = hallway_width - 5
     min_front_int_dist = hallway_width
@@ -49,6 +51,7 @@ class Drive():
     def initDrive(self):
         self.state = self.Drive_State_t.ENTERING
         self.started_entering = False
+        self.int_state = 0
 
     def updateDrive(self):
         if(self.state == self.Drive_State_t.IDLE):
@@ -61,9 +64,22 @@ class Drive():
             self.handleIntersection()
         elif(self.state == self.Drive_State_t.DELIVERING):
             self.handleDelivering()
+
+    def setHeading(self, offset):
+        sensors.updateSensors()
+        deg = self.robot.odometry.getFieldToVehicle().getRotation().getDegrees()
+        deg = round(deg / 90) * 90  
+        self.heading_setpoint = Rotation2d.fromDegrees(deg).rotateBy(Rotation2d.fromDegrees(offset))
+        print("Heading set to: " + str(self.heading_setpoint))
+
+    def getHeadingError(self):
+        current_heading = self.robot.odometry.getFieldToVehicle().getRotation()
+        return current_heading.inverse().rotateBy(self.heading_setpoint).getDegrees()
     
     def handleIdle(self):
         pass
+
+    heading_setpoint = Rotation2d.fromDegrees(0)
     
     entering_fwd_speed = hallway_speed #0.15
     def handleEntering(self):
@@ -84,11 +100,13 @@ class Drive():
                                     Rotation2d(1, 0, False))).getTranslation())
                     self.state = self.Drive_State_t.HALLWAY_FOLLOWING
                     self.started_entering = False
+                    self.setHeading(0)
         else:
             print("Entering bypassed")
             self.gui.log_message("Entering Bypassed")
             self.state = self.Drive_State_t.HALLWAY_FOLLOWING
-
+            map.logStartPoint(self.robot.odometry.getFieldToVehicle().getTranslation())
+            self.setHeading(0)
 
     def handleHallwayFollowing(self):
 
@@ -104,22 +122,38 @@ class Drive():
                 self.state = self.Drive_State_t.INTERSECTION
                 self.gui.log_message("Forward closed")
                 sensors.setMotorOff()
-                time.sleep(5)
+                time.sleep(1)
                 return
 
         # >0 if too far to the right, <0 if too far left
         # if error >0 => correct by increasing right speed
         error = sensors.getLeftWallDistance() - sensors.getRightWallDistance()
         # use error to control difference in motor speed
-        leftSpeed = self.hallway_speed - error*self.kP*self.hallway_speed
-        rightSpeed = self.hallway_speed + error*self.kP*self.hallway_speed
+        pError = error*self.kP*self.hallway_speed
+        if(math.fabs(pError) > self.kLimit):
+            pError = self.kLimit*(pError/math.fabs(pError))
+        leftSpeed = self.hallway_speed
+        rightSpeed = leftSpeed
+        if(pError > 0):
+            rightSpeed += pError
+        else:
+            leftSpeed -= pError
+        # leftSpeed = self.hallway_speed - pError
+        # rightSpeed = self.hallway_speed + pError
 
-        sensors.setLeftMotor(leftSpeed)
-        sensors.setRightMotor(rightSpeed)
+        heading_error = self.getHeadingError()
+        lSpeed = self.hallway_speed - heading_error*self.kPHeading 
+        rSpeed = self.hallway_speed + heading_error*self.kPHeading 
+
+        #sensors.setLeftMotor(leftSpeed)
+        #sensors.setRightMotor(rightSpeed)
+        sensors.setLeftMotor(lSpeed)
+        sensors.setRightMotor(rSpeed)
 
     int_state = 0
     int_st_speed = hallway_speed
     int_turn_speed = 0.15
+    int_turn_tolerance = 3
 
     def handleIntersection(self):
         if(self.intersection_enabled):
@@ -137,13 +171,12 @@ class Drive():
                     # the current position should be approximately the center of the intersection
                     sensors.setMotorOff()
                     self.gui.log_message("Centered")
-                    time.sleep(10)
+                    time.sleep(1)
                     sensors.updateSensors()
                     # Log current pos as an intersection point
                     map.logIntersection(self.robot.odometry.getFieldToVehicle().getTranslation())
                     # determine what the best direction to go is
                     # ensure you also re-look at possible directions
-                    self.int_turn_direction = map.Turn_Direction_Robot_t.BCK
                     if(self.getRightAvailable()):
                         self.int_turn_direction = map.Turn_Direction_Robot_t.RHT
                         self.gui.log_message("Turning Right")
@@ -162,35 +195,40 @@ class Drive():
                         self.gui.log_message("Turning Around")
                         sensors.setLeftMotor(-self.int_turn_speed)
                         sensors.setRightMotor(self.int_turn_speed)
+                    
+                    self.setHeading(self.int_turn_direction)
 
                     # If necessary, turn, if not, skip over
                     if(self.int_turn_direction == map.Turn_Direction_Robot_t.FWD):
                         self.int_state += 2 # skip turning
                     else:
-                        self.int_start_heading = self.robot.odometry.getFieldToVehicle().getRotation()
-                        print("Start Heading: {:.2f}".format(self.int_start_heading.getDegrees()))
                         self.int_state += 1
 
             elif(self.int_state == 2):
-                if(math.fabs(self.int_start_heading.inverse().rotateBy(self.robot.odometry.getFieldToVehicle().getRotation()).getDegrees()) >= math.fabs(self.int_turn_direction)):
+                if(math.fabs(self.getHeadingError()) <= self.int_turn_tolerance):
                     print("End heading: {:.2f}".format(self.robot.odometry.getFieldToVehicle().getRotation().getDegrees()))
                     # turning complete
                     self.gui.log_message("Turning Complete")
                     sensors.setMotorOff()
                     self.int_state += 1
+                    self.setHeading(0)
 
             elif(self.int_state == 3):
                 # drive forward to exit the intersection
                 self.gui.log_message("Exiting Intersection")
-                sensors.setLeftMotor(self.int_st_speed)
-                sensors.setRightMotor(self.int_st_speed)
+                sensors.setLeftMotor(self.int_st_speed - self.getHeadingError()*self.kPHeading)
+                sensors.setRightMotor(self.int_st_speed + self.getHeadingError()*self.kPHeading)
                 self.int_start_pos = self.robot.odometry.getFieldToVehicle()
                 self.int_state += 1
 
             elif(self.int_state == 4):
+
+                sensors.setLeftMotor(self.int_st_speed - self.getHeadingError()*self.kPHeading)
+                sensors.setRightMotor(self.int_st_speed + self.getHeadingError()*self.kPHeading)
                 # distance between current pos and start pos
                 if(self.int_start_pos.inverse().transformBy(self.robot.odometry.getFieldToVehicle()).getTranslation().norm() >= self.int_exit_distance):
                     sensors.setMotorOff()
+                    sensors.updateSensors()
                     # check to ensure we are still in a maze
                     if(self.getLeftAvailable() or self.getRightAvailable()):
                         # we have exited the maze lol yeet
@@ -202,9 +240,13 @@ class Drive():
                     else:
                         # Keep going, you can do it little buddy!
                         self.gui.log_message("Continuing Hallway Following")
+                        self.int_state = 0
+                        self.setHeading(0)
                         self.state = self.Drive_State_t.HALLWAY_FOLLOWING
         else:
             self.state = self.Drive_State_t.HALLWAY_FOLLOWING
+            self.setHeading(0)
+            self.int_state = 0
 
     def handleDelivering(self):
         # Deliver the goods

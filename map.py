@@ -46,6 +46,10 @@ def logStartPoint(translation):
 def logEndPoint(translation):
     waypoints.append(Waypoint(translation, 4))
 
+def reset():
+    global waypoints
+    waypints = []
+
 # need to fit the points to a grid, then fill in gaps with 1
 
 grid_origin_to_robot = Translation2d(0,0)

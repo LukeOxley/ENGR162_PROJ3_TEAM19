@@ -5,6 +5,7 @@ from tkinter import font as tkFont
 from tkinter import scrolledtext
 import robot
 from transforms import *
+import map
 
 class GUI(Frame): # Extending Frame
 
@@ -28,6 +29,8 @@ class GUI(Frame): # Extending Frame
         self.log_message("Press 'Start Run' to enable!")
 
     def startButtonAction(self,event):
+        self.makeGrid()
+        map.reset()
         self.robot.startLoop()
         self.startButton["state"] = "disabled"
         self.stopButton["state"] = "normal"
@@ -87,9 +90,14 @@ class GUI(Frame): # Extending Frame
         self.behind_spin.grid(row=2, column=3)
         spin_frame.grid(row=4, column=0)
 
-        self.refresh = Button(control_frame,text='Refresh Grid',width=10)
-        self.refresh.grid(row=5, column=0)
+        sub_buttom_frame = Frame(control_frame)
+        self.refresh = Button(sub_buttom_frame,text='Refresh Grid',width=10)
+        self.refresh.grid(row=0, column=0)
         self.refresh.bind('<Button-1>', self.makeGridButtonEvent)
+        self.export_grid = Button(sub_buttom_frame,text='Export Grid',width=10)
+        self.export_grid.grid(row=0, column=1)
+        self.export_grid.bind('<Button-1>', self.exportGridEvent)
+        sub_buttom_frame.grid(row=5, column=0)
 
         self.txt_box = scrolledtext.ScrolledText(control_frame, width=40, height=10)
         self.txt_box.grid(row=6, column=0)
@@ -156,6 +164,14 @@ class GUI(Frame): # Extending Frame
             self.canvas.create_line(i,b,i,self.canv_width_px - b)
             self.canvas.create_line(b,i,self.canv_width_px - b,i)
     
+    def exportGridEvent(self, event):
+        # width, behind, startX, startY
+        grid = map.makeGrid(self.wall_width_cm, self.behind_distance, \
+                            float(self.x_start_spin.get()), \
+                            float(self.y_start_spin.get()))
+        for row in grid:
+            print(row)
+    
     def log_message(self, message):
         self.txt_box.insert(INSERT, message + '\n')
         self.txt_box.see(INSERT)
@@ -200,7 +216,7 @@ class GUI(Frame): # Extending Frame
 
 def main():
     master = Tk()
-    master.geometry("900x410")
+    master.geometry("1000x410")
     gui = GUI()
     master.mainloop()
 

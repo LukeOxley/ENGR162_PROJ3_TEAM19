@@ -17,7 +17,8 @@ class Odometry:
 
     def reset(self):
         self.current_pos = RigidTransform2d(Translation2d(0,0), Rotation2d.fromDegrees(90))
-
+        self.last_left_encoder_reading = 0
+        self.last_right_encoder_reading = 0
 
     def updateOdometry(self):
 

@@ -9,7 +9,7 @@ import math
 
 print("X is horizontal, robot starts at 90 pose along +Y")
 
-width = 40 #cm
+width =  21 #cm
 
 print("Input coords are in grid coords")
 start_x_g = float(input("Input the start x coord"))
@@ -60,8 +60,8 @@ try:
 
 
 
-        sensors.setLeftMotor(speed - heading_error*kP*speed - mag_error*kMP)
-        sensors.setRightMotor(speed + heading_error*kP*speed + mag_error*kMP)
+        sensors.setLeftMotor(speed - heading_error*kP*speed + mag_error*kMP)
+        sensors.setRightMotor(speed + heading_error*kP*speed - mag_error*kMP)
 
         #detect if within radius
         if(goal_offset.norm() <= error_radius):

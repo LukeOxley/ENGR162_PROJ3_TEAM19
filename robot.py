@@ -6,6 +6,7 @@ import gui
 from odometry import Odometry
 from drive import Drive
 import sensors
+import map
 
 # List of things TODO:
 # zero position once it enters the maze?
@@ -18,7 +19,7 @@ import sensors
 # in charge of the periodic updating
 # loop start and stop controlled by gui
 class Robot(object):
-    cycle_time = 0.02
+    cycle_time = 0.01
     enabled = False
     odometry = Odometry(cycle_time)
 
@@ -29,7 +30,6 @@ class Robot(object):
 
     def initialize(self):
         sensors.initSensors()
-        pass
 
     def startLoop(self):
         if(not self.enabled):
@@ -60,11 +60,9 @@ class Robot(object):
             # Able to decrease sensor update frequency
             if(loop_counter % 1 == 0):
                 sensors.updateSensors()
-                pass
 
-            self.drive.updateDrive()
             self.odometry.updateOdometry()
-            #self.current = self.current.transformBy(RigidTransform2d(Translation2d(1,1),Rotation2d.fromDegrees(0.05)))
+            self.drive.updateDrive()
 
             if(loop_counter % 1 == 0):
                 self.current = self.odometry.getFieldToVehicle()

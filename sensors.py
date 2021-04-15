@@ -22,6 +22,7 @@ def initSensors():
 
     BP.set_sensor_type(BP.PORT_2, BP.SENSOR_TYPE.EV3_GYRO_ABS)
     BP.set_sensor_type(BP.PORT_3, BP.SENSOR_TYPE.EV3_ULTRASONIC_CM)
+    #BP.set_motor_limits(BP.PORT_C, 25, 800)
     #Reset Left wheel encoder to 0
     try:
       BP.offset_motor_encoder(BP.PORT_A, BP.get_motor_encoder(BP.PORT_A))
@@ -30,6 +31,10 @@ def initSensors():
     #Reset Right wheel encoder to 0
     try:
       BP.offset_motor_encoder(BP.PORT_B, BP.get_motor_encoder(BP.PORT_B))
+    except:
+      pass
+    try:
+      BP.offset_motor_encoder(BP.PORT_C, BP.get_motor_encoder(BP.PORT_C))
     except:
       pass
     # reset gyro heading to 0
@@ -186,6 +191,9 @@ def setLeftMotor(speed):
 
 def setRightMotor(speed):
     BP.set_motor_dps(BP.PORT_B, 1050*speed)
+
+def setRampAngle(angle):
+  BP.set_motor_position(BP.PORT_C, -angle)
 
 def setMotorOff():
     setLeftMotor(0)

@@ -31,6 +31,9 @@ class GUI(Frame): # Extending Frame
     def startButtonAction(self,event):
         self.makeGrid()
         map.reset()
+        map.setTranslation(self.wall_width_cm, self.behind_distance, \
+                            float(self.x_start_spin.get()), \
+                            float(self.y_start_spin.get()))
         self.robot.startLoop()
         self.startButton["state"] = "disabled"
         self.stopButton["state"] = "normal"

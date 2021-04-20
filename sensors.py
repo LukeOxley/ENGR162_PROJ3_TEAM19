@@ -169,11 +169,13 @@ def getRightWallDistance():
 
 def getIRLevelLeft():
     global irLevelLeft
-    return float(irLevelLeft); # not sure on the units
+    #return float(irLevelLeft); # not sure on the units
+    return 0
 
 def getIRLevelRight():
     global irLevelRight
-    return float(irLevelRight); # not sure on the units
+    #return float(irLevelRight); # not sure on the units
+    return 0
 
 def getMagneticLevel():
     global mag

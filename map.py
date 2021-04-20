@@ -181,13 +181,13 @@ def exportGrid(map_number=0, notes=""):
     global startx
     global starty
     makeGrid()
-    filename = "team_19_map.csv"
+    filename = "team19_map.csv"
     with open(filename, 'w') as file:
         file.write("Team: 19\n")
         file.write("Map: {:d}\n".format(map_number))
         file.write("Unit Length: {:d}\n".format(int(wall_width_s)))
         file.write("Unit: cm\n")
-        file.write("\"Origin: ({:d}, {:d})\"\n".format(startx, starty))
+        file.write("\"Origin: ({:f}, {:f})\"\n".format(startx, starty))
         file.write("Notes: {:s}\n".format(notes))
         for row in grid:
             for entry in row:
@@ -198,7 +198,7 @@ def exportHazards(map_number=0, notes=""):
     filename = "team19_hazards.csv"
     with open(filename, 'w') as file:
         file.write("Team: 19\n")
-        file.write("Map: {:d}\n".format(map_number))
+        file.write("Map: {:f}\n".format(map_number))
         file.write("Notes: {:s}\n".format(notes))
         hazard_grid = []
         heading = ['Resource Type', 'Parameter of Interest', \
@@ -216,11 +216,3 @@ def exportHazards(map_number=0, notes=""):
             for entry in row:
                 file.write(str(entry)+',')
             file.write('\n')
-
-
-    
-
-    
-
-
-

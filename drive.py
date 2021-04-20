@@ -4,6 +4,7 @@ import math
 import odometry
 from transforms import RigidTransform2d, Rotation2d, Translation2d
 import time
+import hazard_detection
 #from robot import Robot
 # determines possible navigation options
 # interfaces with maze solver to find which directions to go
@@ -15,7 +16,7 @@ class Drive():
     hallway_width = 40 #cm
     robot_width = 21 # cm
     robot_length = 25 #cm
-    robot_b = 14 #12 # cm distance between front and side sensor
+    robot_b = 10 #14 #12 # cm distance between front and side sensor
     robot_p = 0 # cm distance between center and pivot point (make <0 if pivot infront of center)
     hallway_speed = 0.15
     kP = 0.4 #0.05 # % of speed to add per cm in error
@@ -39,7 +40,10 @@ class Drive():
         IDLE = "IDLE"
         ENTERING = "ENTERING"
         HALLWAY_FOLLOWING = "HALLWAY_FOLLOWING"
-        INTERSECTION = "INTERSECTION"
+        INTERSECTION_ENTERING = "INTERSECTION_ENTERING"
+        HAZARD_SCANNING = "HAZARD_SCANNING"
+        INTERSECTION_EXITING = "INTERSECTION_EXITING"
+        TURNING_AROUND = "TURNING_AROUND" # Added just for if it sees a hazard in hallway
         DELIVERING = "DELIVERING"
 
     state = Drive_State_t.IDLE
@@ -51,7 +55,11 @@ class Drive():
     def initDrive(self):
         self.state = self.Drive_State_t.ENTERING
         self.started_entering = False
-        self.int_state = 0
+        self.int_enter_state = 0
+        self.hzd_scan_state = 0
+        self.int_exit_state = 0
+        self.turn_around_state = 0
+        self.deliver_state = 0
 
     def updateDrive(self):
         if(self.state == self.Drive_State_t.IDLE):
@@ -60,8 +68,14 @@ class Drive():
             self.handleEntering()
         elif(self.state == self.Drive_State_t.HALLWAY_FOLLOWING):
             self.handleHallwayFollowing()
-        elif(self.state == self.Drive_State_t.INTERSECTION):
-            self.handleIntersection()
+        elif(self.state == self.Drive_State_t.INTERSECTION_ENTERING):
+            self.handleIntersectionEntering()
+        elif(self.state == self.Drive_State_t.HAZARD_SCANNING):
+            self.handleHazardScanning()
+        elif(self.state == self.Drive_State_t.INTERSECTION_EXITING):
+            self.handleIntersectionExiting()
+        elif(self.state == self.Drive_State_t.TURNING_AROUND):
+            self.handleTurningAround()
         elif(self.state == self.Drive_State_t.DELIVERING):
             self.handleDelivering()
 
@@ -111,19 +125,37 @@ class Drive():
     def handleHallwayFollowing(self):
 
         if(self.intersection_enabled):
+            if(hazard_detection.irHazardExists() or hazard_detection.magHazardExists()):
+                # jeepers, get outta here!
+                if(hazard_detection.irHazardExists()):
+                    map.logHeatSource(self.robot.odometry.getFieldToVehicle().transformBy(
+                                    RigidTransform2d(Translation2d(hazard_detection.getIRDistanceLeft(), 0), 
+                                                Rotation2d(1,0,False))).getTranslation(), sensors.getIRLevelLeft())
+                    self.gui.log_message("IR Detected, turning around")
+                if(hazard_detection.magHazardExists()):
+                    map.logMagneticSource(self.robot.odometry.getFieldToVehicle().transformBy(
+                                    RigidTransform2d(Translation2d(hazard_detection.getIRDistanceLeft(), 0), 
+                                                Rotation2d(1,0,False))).getTranslation(), sensors.getMagneticMagnitude())
+                    self.gui.log_message("Mag Detected, turning around")
+                self.state = self.Drive_State_t.TURNING_AROUND
+                sensors.setMotorOff()
+                time.sleep(1)
+                return
             if(self.getLeftAvailable() or self.getRightAvailable()):
                 self.intersection_forward_dist = self.int_side_fwd_dist
-                self.state = self.Drive_State_t.INTERSECTION
+                self.state = self.Drive_State_t.INTERSECTION_ENTERING
                 self.gui.log_message("Left or right path open")
                 sensors.setMotorOff()
+                time.sleep(1)
                 return
             elif(not self.getFrontAvailable()):
                 self.intersection_forward_dist = self.int_front_fwd_dist
-                self.state = self.Drive_State_t.INTERSECTION
+                self.state = self.Drive_State_t.INTERSECTION_ENTERING
                 self.gui.log_message("Forward closed")
                 sensors.setMotorOff()
                 time.sleep(1)
                 return
+            
 
         # >0 if too far to the right, <0 if too far left
         # if error >0 => correct by increasing right speed
@@ -150,107 +182,199 @@ class Drive():
         sensors.setLeftMotor(lSpeed)
         sensors.setRightMotor(rSpeed)
 
-    int_state = 0
+    int_enter_state = 0
     int_st_speed = hallway_speed
     int_turn_speed = 0.15
-    int_turn_tolerance = 3
+    int_turn_tolerance = 2 #3
 
-    def handleIntersection(self):
-        if(self.intersection_enabled):
-            if(self.int_state == 0):
-                # first call
-                self.gui.log_message("Centering into square")
-                # begin driving forward
-                sensors.setLeftMotor(self.int_st_speed)
-                sensors.setRightMotor(self.int_st_speed)
-                self.int_start_pos = self.robot.odometry.getFieldToVehicle()
-                self.int_state += 1
-            elif(self.int_state == 1):
-                # distance between current pos and start pos
-                if(self.int_start_pos.inverse().transformBy(self.robot.odometry.getFieldToVehicle()).getTranslation().norm() >= self.intersection_forward_dist):
-                    # the current position should be approximately the center of the intersection
-                    sensors.setMotorOff()
-                    self.gui.log_message("Centered")
-                    time.sleep(1)
-                    sensors.updateSensors()
-                    # Log current pos as an intersection point
-                    map.logIntersection(self.robot.odometry.getFieldToVehicle().getTranslation())
-                    # determine what the best direction to go is
-                    # ensure you also re-look at possible directions
-                    if(self.getRightAvailable()):
-                        self.int_turn_direction = map.Turn_Direction_Robot_t.RHT
-                        self.gui.log_message("Turning Right")
-                        sensors.setLeftMotor(self.int_turn_speed)
-                        sensors.setRightMotor(-self.int_turn_speed)
-                    elif(self.getFrontAvailable()):
-                        self.gui.log_message("Moving Forward")
-                        self.int_turn_direction = map.Turn_Direction_Robot_t.FWD
-                    elif(self.getLeftAvailable()):
-                        self.int_turn_direction = map.Turn_Direction_Robot_t.LFT
-                        self.gui.log_message("Turning Left")
-                        sensors.setLeftMotor(-self.int_turn_speed)
-                        sensors.setRightMotor(self.int_turn_speed)
-                    else:
-                        self.int_turn_direction = map.Turn_Direction_Robot_t.BCK
-                        self.gui.log_message("Turning Around")
-                        sensors.setLeftMotor(-self.int_turn_speed)
-                        sensors.setRightMotor(self.int_turn_speed)
-                    
-                    self.setHeading(self.int_turn_direction)
+    def handleIntersectionEntering(self):
+        if(self.int_enter_state == 0):
+            # first call
+            self.gui.log_message("Centering into square")
+            # begin driving forward
+            sensors.setLeftMotor(self.int_st_speed)
+            sensors.setRightMotor(self.int_st_speed)
+            self.int_start_pos = self.robot.odometry.getFieldToVehicle()
+            self.int_enter_state += 1
+        elif(self.int_enter_state == 1):
+            if(self.int_start_pos.inverse().transformBy(self.robot.odometry.getFieldToVehicle()).getTranslation().norm() >= self.intersection_forward_dist):
+                # the current position should be approximately the center of the intersection
+                sensors.setMotorOff()
+                sensors.updateSensors()
+                time.sleep(1)
+                self.gui.log_message("Centered, Searching For Hazards")
+                # Log current pos as an intersection point
+                map.logIntersection(self.robot.odometry.getFieldToVehicle().getTranslation())
 
-                    # If necessary, turn, if not, skip over
-                    if(self.int_turn_direction == map.Turn_Direction_Robot_t.FWD):
-                        self.int_state += 2 # skip turning
-                    else:
-                        self.int_state += 1
+                # Transition to hazard search
+                self.state = self.Drive_State_t.HAZARD_SCANNING
+                self.int_enter_state = 0
+                     
+    hzd_scan_state = 0
+    def handleHazardScanning(self):
+        if(self.hzd_scan_state == 0):
+            # begins looking for hazards in all three directions, goal is to narrow down which directions need to be scanned
+            sensors.updateSensors()
+            self.hzd_lt_avail = self.getLeftAvailable()
+            self.hzd_rt_avail = self.getRightAvailable()
+            self.hzd_ft_avail = self.getFrontAvailable()
 
-            elif(self.int_state == 2):
-                if(math.fabs(self.getHeadingError()) <= self.int_turn_tolerance):
-                    print("End heading: {:.2f}".format(self.robot.odometry.getFieldToVehicle().getRotation().getDegrees()))
-                    # turning complete
-                    self.gui.log_message("Turning Complete")
-                    sensors.setMotorOff()
-                    self.int_state += 1
-                    self.setHeading(0)
-
-            elif(self.int_state == 3):
-                # drive forward to exit the intersection
-                self.gui.log_message("Exiting Intersection")
-                sensors.setLeftMotor(self.int_st_speed - self.getHeadingError()*self.kPHeading)
-                sensors.setRightMotor(self.int_st_speed + self.getHeadingError()*self.kPHeading)
-                self.int_start_pos = self.robot.odometry.getFieldToVehicle()
-                self.int_state += 1
-
-            elif(self.int_state == 4):
-
-                sensors.setLeftMotor(self.int_st_speed - self.getHeadingError()*self.kPHeading)
-                sensors.setRightMotor(self.int_st_speed + self.getHeadingError()*self.kPHeading)
-                # distance between current pos and start pos
-                if(self.int_start_pos.inverse().transformBy(self.robot.odometry.getFieldToVehicle()).getTranslation().norm() >= self.int_exit_distance):
-                    sensors.setMotorOff()
-                    sensors.updateSensors()
-                    # check to ensure we are still in a maze
-                    if(self.getLeftAvailable() or self.getRightAvailable()):
-                        # we have exited the maze lol yeet
-                        self.gui.log_message("Maze Exited")
-                        map.logEndPoint(self.robot.odometry.getFieldToVehicle().transformBy( \
-                                        RigidTransform2d(Translation2d(-self.hallway_width/2, 0), \
-                                        Rotation2d(1, 0, False))).getTranslation())
-                        self.state = self.Drive_State_t.DELIVERING
-                    else:
-                        # Keep going, you can do it little buddy!
-                        self.gui.log_message("Continuing Hallway Following")
-                        self.int_state = 0
-                        self.setHeading(0)
-                        self.state = self.Drive_State_t.HALLWAY_FOLLOWING
+            hazard_detection.startDirectionalScan(not self.getLeftAvailable(), not self.getFrontAvailable(), not self.getRightAvailable())
+            self.hzd_start_rigid = self.robot.odometry.getFieldToVehicle()
+            self.hzd_start_heading = self.robot.odometry.getFieldToVehicle().getRotation()
+            self.hzd_scan_state += 1
         else:
-            self.state = self.Drive_State_t.HALLWAY_FOLLOWING
-            self.setHeading(0)
-            self.int_state = 0
+            # Updates all scan directions, chooses which to update based on if heading is in correct direction
+            hazard_detection.updateAllScans(self.robot.odometry.getFieldToVehicle().getRotation(), self.hzd_start_heading)
+        
+        if(self.hzd_scan_state == 1):
+            # see whats left to scan
+            sensors.updateSensors()
 
+            #if(hazard_detection.needToScanFwd()):
+
+            if(hazard_detection.needToScanLeft()):
+                # turn left 90
+                self.hzd_turn_direction = map.Turn_Direction_Robot_t.LFT
+                self.gui.log_message("Scanning Left")
+            elif(hazard_detection.needToScanRight()):
+                # turn right 90
+                self.hzd_turn_direction = map.Turn_Direction_Robot_t.RHT
+                self.gui.log_message("Scanning Right")
+            else:
+                #completely done scanning!!!
+                if(self.hzd_rt_avail and not hazard_detection.rightHazardPresent()):
+                    self.hzd_turn_direction = map.Turn_Direction_Robot_t.RHT
+                    self.gui.log_message("Turning Right")
+                elif(self.hzd_ft_avail and not hazard_detection.frontHazardPresent()):
+                    self.hzd_turn_direction = map.Turn_Direction_Robot_t.FWD
+                    self.gui.log_message("Turning Forward")
+                elif(self.hzd_lt_avail and not hazard_detection.leftHazardPresent()):
+                    self.hzd_turn_direction = map.Turn_Direction_Robot_t.LFT
+                    self.gui.log_message("Turning Left")
+                else:
+                    # no available dirs, turn around
+                    self.hzd_turn_direction = map.Turn_Direction_Robot_t.BCK
+                    self.gui.log_message("Turning Around")
+
+            heading_offset = self.hzd_start_heading.inverse().rotateBy(self.robot.odometry.getFieldToVehicle().getRotation()).getDegrees()
+            heading_change = self.hzd_turn_direction - heading_offset
+            if(math.fabs(heading_change) > 45):
+                # still need to change direction
+                self.setHeading(heading_change)
+                self.hzd_scan_state += 1
+                mult = 1
+                if(heading_change < 0):
+                    mult = -1
+                sensors.setLeftMotor(-self.int_turn_speed * mult)
+                sensors.setRightMotor(self.int_turn_speed * mult)
+            else:
+                # we are already at the deired location!
+                # move to last step in hazard scanning
+                self.hzd_scan_state += 2
+
+        elif(self.hzd_scan_state == 2):
+            # Turning
+            if(math.fabs(self.getHeadingError()) <= self.int_turn_tolerance):
+                # turning complete
+                self.gui.log_message("Scan Turn Complete")
+                sensors.setMotorOff()
+                self.hzd_scan_state = 1
+
+        elif(self.hzd_scan_state == 3):
+            # log the hazards and scram to the exit intersection mode
+            self.gui.log_message("Done with hazard detection")
+            hazard_detection.logAllScans(self.hzd_start_rigid)
+            self.state = self.Drive_State_t.INTERSECTION_EXITING
+            self.hzd_scan_state = 0
+        
+    int_exit_state = 0
+    def handleIntersectionExiting(self):
+        if(self.int_exit_state == 0):
+            # drive forward to exit the intersection
+            self.gui.log_message("Exiting Intersection")
+            sensors.setLeftMotor(self.int_st_speed - self.getHeadingError()*self.kPHeading)
+            sensors.setRightMotor(self.int_st_speed + self.getHeadingError()*self.kPHeading)
+            self.int_start_pos = self.robot.odometry.getFieldToVehicle()
+            self.left_was_available = self.getLeftAvailable()
+            self.right_was_available = self.getRightAvailable()
+            self.int_exit_state += 1
+        elif(self.int_exit_state == 1):
+            # Exiting Intersection State
+
+            sensors.setLeftMotor(self.int_st_speed - self.getHeadingError()*self.kPHeading)
+            sensors.setRightMotor(self.int_st_speed + self.getHeadingError()*self.kPHeading)
+            # continue to check for forward wall
+            if(not self.getFrontAvailable()):
+                self.intersection_forward_dist = self.int_front_fwd_dist
+                self.state = self.Drive_State_t.INTERSECTION_ENTERING
+                self.gui.log_message("Forward closed while exiting intersection")
+                sensors.setMotorOff()
+                self.int_exit_state = 0
+                time.sleep(1)
+                return
+            # check for a change in state of the sonic from wall to no wall (sides)
+            if((self.left_was_available and not self.getLeftAvailable()) or
+                (self.right_was_available and not self.getRightAvailable())):
+                self.intersection_forward_dist = self.int_side_fwd_dist
+                self.state = self.Drive_State_t.INTERSECTION_ENTERING
+                self.gui.log_message("Left or right path open while exiting intersection")
+                sensors.setMotorOff()
+                self.int_exit_state = 0
+                time.sleep(1)
+                return
+            # distance between current pos and start pos
+            if(self.int_start_pos.inverse().transformBy(self.robot.odometry.getFieldToVehicle()).getTranslation().norm() >= self.int_exit_distance):
+                sensors.setMotorOff()
+                sensors.updateSensors()
+                # check to ensure we are still in a maze
+                if(self.getLeftAvailable() or self.getRightAvailable()):
+                    # we have exited the maze lol yeet
+                    self.gui.log_message("Maze Exited")
+                    map.logEndPoint(self.robot.odometry.getFieldToVehicle().transformBy( \
+                                    RigidTransform2d(Translation2d(-self.hallway_width/2, 0), \
+                                    Rotation2d(1, 0, False))).getTranslation())
+                    self.state = self.Drive_State_t.DELIVERING
+                else:
+                    # Keep going, you can do it little buddy!
+                    self.gui.log_message("Continuing Hallway Following")
+                    self.int_exit_state = 0
+                    self.setHeading(0)
+                    self.state = self.Drive_State_t.HALLWAY_FOLLOWING
+
+    turn_around_state = 0
+    def handleTurningAround(self):
+        # turn around if hazard detected in hallway
+        if(self.turn_around_state == 0):
+            self.setHeading(180)
+            sensors.setLeftMotor(-self.int_turn_speed)
+            sensors.setRightMotor(self.int_turn_speed)
+            self.turn_around_state += 1
+        else:
+            if(math.fabs(self.getHeadingError()) <= self.int_turn_tolerance):
+                # turning complete
+                self.gui.log_message("Turn Around Complete")
+                sensors.setMotorOff()
+                self.turn_around_state = 0
+                self.state = self.Drive_State_t.HALLWAY_FOLLOWING
+
+    deliver_state = 0
+    deliver_distance = 5
     def handleDelivering(self):
         # Deliver the goods
-        pass
+        if(self.deliver_state == 0):
+            sensors.setRampAngle(60)
+            self.deliver_start_pos = self.robot.odometry.getFieldToVehicle()
+            sensors.setLeftMotor(self.int_st_speed)
+            sensors.setRightMotor(self.int_st_speed)
+            self.deliver_state = 1
+        elif(self.deliver_state == 1):
+            if(self.deliver_start_pos.inverse().transformBy(self.robot.odometry.getFieldToVehicle()).getTranslation().norm() >= self.deliver_distance):
+                sensors.setMotorOff()
+                sensors.setRampAngle(0)
+                self.deliver_state = 0
+                self.gui.log_message("Package Delivered")
+                self.state = self.Drive_State_t.IDLE
         
     def getLeftAvailable(self):
         return sensors.getLeftWallDistance() > self.min_side_int_dist

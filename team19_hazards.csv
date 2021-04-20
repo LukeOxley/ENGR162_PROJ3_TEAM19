@@ -1,6 +1,4 @@
 Team: 19
-Map: 0
-Notes: 
+Map: 0.000000
+Notes: Hazard data recorded by GEARS
 Resource Type,Parameter of Interest,Resource X Coordinate,Resource Y Coordinate,
-Heat Source,Heat,0,160.0,
-Mag Source,Mag (uT),40,160.0,

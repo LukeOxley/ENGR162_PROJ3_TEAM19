@@ -97,15 +97,16 @@ class GUI(Frame): # Extending Frame
         self.refresh = Button(sub_buttom_frame,text='Refresh Grid',width=10)
         self.refresh.grid(row=0, column=0)
         self.refresh.bind('<Button-1>', self.makeGridButtonEvent)
+        Label(sub_buttom_frame, text='Map').grid(row=0, column=1)
+        self.map_num_spin = Spinbox(sub_buttom_frame, from_=0, to=50, width=5)
+        self.map_num_spin.grid(row=0, column=2)
         self.export_grid = Button(sub_buttom_frame,text='Export Grid',width=10)
-        self.export_grid.grid(row=0, column=1)
+        self.export_grid.grid(row=0, column=3)
         self.export_grid.bind('<Button-1>', self.exportGridEvent)
         sub_buttom_frame.grid(row=5, column=0)
 
         self.txt_box = scrolledtext.ScrolledText(control_frame, width=40, height=10)
         self.txt_box.grid(row=6, column=0)
-
-        
 
         control_frame.grid(row=0, column=0)
 
@@ -169,10 +170,10 @@ class GUI(Frame): # Extending Frame
     
     def exportGridEvent(self, event):
         # width, behind, startX, startY
-        grid = map.makeGrid(self.wall_width_cm, self.behind_distance, \
-                            float(self.x_start_spin.get()), \
-                            float(self.y_start_spin.get()))
-        for row in grid:
+        map_num = int(self.map_num_spin.get())
+        map.exportGrid(map_number=map_num, notes="Map data recorded by GEARS")
+        map.exportHazards(map_number=map_num, notes="Hazard data recorded by GEARS")
+        for row in map.grid:
             print(row)
     
     def log_message(self, message):

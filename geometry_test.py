@@ -72,3 +72,10 @@ print(curr)
 print(delta)
 result = curr.transformBy(delta)
 print(result)
+
+start = RigidTransform2d(Translation2d(120, 480), Rotation2d(0, 1, False)).getTranslation()
+max_loc = Translation2d(50, 0).rotateBy(Rotation2d(-1, 0, False))
+
+print(max_loc)
+end = start.translateBy(max_loc)
+print(end)

@@ -7,7 +7,7 @@ import math
 print("CCW is the positive direction!")
 angle = float(input("Input the desired turn angle-> "))
 
-dt = 0.02
+dt = 0.01
 
 odometry = Odometry(dt)
 sensors.initSensors()

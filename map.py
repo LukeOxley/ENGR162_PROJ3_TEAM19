@@ -80,6 +80,14 @@ def isPointTaken(translation):
             return True
     return False
 
+def removePoint(translation):
+    for point in waypoints:
+        existing_loc = revertCoord(transformCoord(point.transform2d))
+        if(math.fabs(translation.getX() - existing_loc.getX()) < wall_width_s/2.0 and
+            math.fabs(translation.getY() - existing_loc.getY()) < wall_width_s/2.0):
+            # the thing exists, pass 
+            print("Removded point: " + str(point.transform2d) + " of type " + str(point.number))
+            waypoints.remove(point)
 
 def logIntersection(translation):
     if(not isPointTaken(translation)):
@@ -90,8 +98,10 @@ def logStartPoint(translation):
         waypoints.append(Waypoint(translation, 5))
 
 def logEndPoint(translation):
-    if(not isPointTaken(translation)):
-        waypoints.append(Waypoint(translation, 4))
+    print("logging endpoint")
+    # take away the possible existing point
+    removePoint(translation)
+    waypoints.append(Waypoint(translation, 4))
 
 def logHeatSource(translation, value):
     if(not isPointTaken(translation)): 
@@ -184,10 +194,10 @@ def exportGrid(map_number=0, notes=""):
     filename = "team19_map.csv"
     with open(filename, 'w') as file:
         file.write("Team: 19\n")
-        file.write("Map: {:d}\n".format(map_number))
+        file.write("Map: {:.1f}\n".format(map_number))
         file.write("Unit Length: {:d}\n".format(int(wall_width_s)))
         file.write("Unit: cm\n")
-        file.write("\"Origin: ({:f}, {:f})\"\n".format(startx, starty))
+        file.write("\"Origin: ({:.1f}, {:.1f})\"\n".format(startx, starty))
         file.write("Notes: {:s}\n".format(notes))
         for row in grid:
             for entry in row:
@@ -198,7 +208,7 @@ def exportHazards(map_number=0, notes=""):
     filename = "team19_hazards.csv"
     with open(filename, 'w') as file:
         file.write("Team: 19\n")
-        file.write("Map: {:f}\n".format(map_number))
+        file.write("Map: {:.1f}\n".format(map_number))
         file.write("Notes: {:s}\n".format(notes))
         hazard_grid = []
         heading = ['Resource Type', 'Parameter of Interest', \

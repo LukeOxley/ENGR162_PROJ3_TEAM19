@@ -170,7 +170,7 @@ class GUI(Frame): # Extending Frame
     
     def exportGridEvent(self, event):
         # width, behind, startX, startY
-        map_num = int(self.map_num_spin.get())
+        map_num = float(self.map_num_spin.get())
         map.exportGrid(map_number=map_num, notes="Map data recorded by GEARS")
         map.exportHazards(map_number=map_num, notes="Hazard data recorded by GEARS")
         for row in map.grid:

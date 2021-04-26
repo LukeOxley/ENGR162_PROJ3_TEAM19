@@ -3,8 +3,17 @@ from transforms import RigidTransform2d, Rotation2d, Translation2d
 import sensors
 import map
 
-mag_possible_threshold = 250 # THE Z COMP THRESH
-ir_possible_threshold = 3
+mag_possible_threshold = 210 #220 #250 # THE Z COMP THRESH
+ir_possible_threshold = 20 #3
+
+def update_mag_thresh():
+    global mag_possible_threshold
+    file_name = 'max_mag.txt'
+    with open(file_name, 'r') as f:
+        line = f.readline()
+        mag_possible_threshold = float(line) + 40
+    print("New mag thresh: " + str(mag_possible_threshold))
+
 
 class HazardDirection:
     maxIRReading = 0
@@ -58,11 +67,14 @@ class HazardDirection:
                (self.counts_since_mag_max > self.max_counts)
 
 def magHazardExists():
-    x, y, z = sensors.getMagneticLevel()
-    return math.fabs(z) > mag_possible_threshold
+    #x, y, z = sensors.getMagneticLevel()
+    return math.fabs(sensors.getMagneticMagnitude()) > mag_possible_threshold
 
 def getMagneticDistanceFromReading(reading):
-    return 378.15 * math.pow(reading, -0.563)
+    if(reading > 0):
+        return 378.15 * math.pow(reading, -0.563)
+    else:
+        return 0
 def getMagneticDistance():
     return getMagneticDistanceFromReading(sensors.getMagneticMagnitude())
 
@@ -84,10 +96,8 @@ def startDirectionalScan(left_wall, fwd_wall, right_wall):
     left_haz = HazardDirection(left_wall)
     fwd_haz = HazardDirection(fwd_wall)
     right_haz = HazardDirection(right_wall)
-    if(not magHazardExists()):
-        fwd_haz.possible_mag = HazardDirection.DetectionState.NOTPRES
-    if(not irHazardExists()):
-        fwd_haz.possible_ir = HazardDirection.DetectionState.NOTPRES
+    fwd_haz.possible_mag = HazardDirection.DetectionState.PRES if magHazardExists() and not fwd_wall else HazardDirection.DetectionState.NOTPRES
+    fwd_haz.possible_ir = HazardDirection.DetectionState.PRES if irHazardExists() and not fwd_wall else HazardDirection.DetectionState.NOTPRES
     
 def needToScanLeft():
     global left_haz
@@ -143,48 +153,51 @@ def updateAllScans(heading, start_heading):
 
     if(math.fabs(start_heading.inverse().rotateBy(heading).getDegrees()) < scan_range):
         # In range for front
-        updateFwdScan(IR, Mag_z, Mag_Mag, heading_delta)
+        updateFwdScan(IR, Mag_Mag, Mag_Mag, heading)#heading_delta)
         #print("Updating FRONT SCAN")
     elif(math.fabs(start_heading.rotateBy(Rotation2d(0,1,False)).inverse()\
         .rotateBy(heading).getDegrees()) < scan_range):
-        # In range for right
-        updateLeftScan(IR, Mag_z, Mag_Mag, heading_delta)
+        # In range for left
+        updateLeftScan(IR, Mag_Mag, Mag_Mag, heading)#heading_delta)
         #print("Updating LEFT SCAN")
     elif(math.fabs(start_heading.rotateBy(Rotation2d(0,-1,False)).inverse()\
         .rotateBy(heading).getDegrees()) < scan_range):
         # In range for right
-        updateRightScan(IR, Mag_z, Mag_Mag, heading_delta)
+        updateRightScan(IR, Mag_Mag, Mag_Mag, heading)#heading_delta)
         #print("Updating RIGHT SCAN")
 
 def logAllScans(start_rigid):
     global fwd_haz
     global left_haz
     global right_haz
+    log_dist = 20
     if(frontHazardPresent()):
         if(fwd_haz.possible_ir == HazardDirection.DetectionState.PRES):
-            map.logHeatSource(start_rigid.transfromBy(
-                RigidTransform2d(Translation2d(getIRDistanceFromReading(fwd_haz.maxIRReading), 0), fwd_haz.maxIRReadingHeading)).getTranslation(), 
+            map.logHeatSource(start_rigid.getTranslation().translateBy(
+                Translation2d(log_dist, 0).rotateBy(fwd_haz.maxIRReadingHeading)),
                 fwd_haz.maxIRReading)
         if(fwd_haz.possible_mag == HazardDirection.DetectionState.PRES):
-            map.logHeatSource(start_rigid.transfromBy(
-                RigidTransform2d(Translation2d(getMagneticDistanceFromReading(fwd_haz.maxMagReadingMagnitude), 0), fwd_haz.maxMagReadingHeading)).getTranslation(), 
+            map.logMagneticSource(start_rigid.getTranslation().translateBy(
+                Translation2d(log_dist, 0).rotateBy(fwd_haz.maxMagReadingHeading)),
                 fwd_haz.maxMagReadingMagnitude)
     if(leftHazardPresent()):
         if(left_haz.possible_ir == HazardDirection.DetectionState.PRES):
-            map.logHeatSource(start_rigid.transfromBy(
-                RigidTransform2d(Translation2d(getIRDistanceFromReading(left_haz.maxIRReading), 0), left_haz.maxIRReadingHeading)).getTranslation(), 
+            map.logHeatSource(start_rigid.getTranslation().translateBy(
+                Translation2d(log_dist, 0).rotateBy(left_haz.maxIRReadingHeading)), 
                 left_haz.maxIRReading)
+            print("Heading: "+str(left_haz.maxIRReadingHeading) + " Dist: "+ str(getIRDistanceFromReading(left_haz.maxIRReading)))
         if(left_haz.possible_mag == HazardDirection.DetectionState.PRES):
-            map.logHeatSource(start_rigid.transfromBy(
-                RigidTransform2d(Translation2d(getMagneticDistanceFromReading(left_haz.maxMagReadingMagnitude), 0), left_haz.maxMagReadingHeading)).getTranslation(), 
+            map.logMagneticSource(start_rigid.getTranslation().translateBy(
+                Translation2d(log_dist, 0).rotateBy(left_haz.maxMagReadingHeading)),
                 left_haz.maxMagReadingMagnitude)
+            print("logged left mag")
     if(rightHazardPresent()):
         if(right_haz.possible_ir == HazardDirection.DetectionState.PRES):
-            map.logHeatSource(start_rigid.transfromBy(
-                RigidTransform2d(Translation2d(getIRDistanceFromReading(fwd_haz.maxIRReading), 0), fwd_haz.maxIRReadingHeading)).getTranslation(), 
-                fwd_haz.maxIRReading)
-        if(fwd_haz.possible_mag == HazardDirection.DetectionState.PRES):
-            map.logHeatSource(start_rigid.transfromBy(
-                RigidTransform2d(Translation2d(getMagneticDistanceFromReading(fwd_haz.maxMagReadingMagnitude), 0), fwd_haz.maxMagReadingHeading)).getTranslation(), 
-                fwd_haz.maxMagReadingMagnitude)
+            map.logHeatSource(start_rigid.getTranslation().translateBy(
+                Translation2d(log_dist, 0).rotateBy(right_haz.maxIRReadingHeading)), 
+                right_haz.maxIRReading)
+        if(right_haz.possible_mag == HazardDirection.DetectionState.PRES):
+            map.logMagneticSource(start_rigid.getTranslation().translateBy(
+                Translation2d(log_dist, 0).rotateBy(right_haz.maxMagReadingHeading)), 
+                right_haz.maxMagReadingMagnitude)
     

@@ -11,6 +11,7 @@ import grovepi
 import math
 from transforms import Rotation2d
 import time
+import hazard_detection
 
 BP = brickpi3.BrickPi3()
 mpu = MPU9250()
@@ -49,11 +50,16 @@ def initSensors():
         pass
     print("Gyro Calibrated")
 
+counter_max = 6
+counter = 0
+mag = {'x':0,'y':0,'z':0}
+
 def updateSensors():
     #Gives program wide scope
     global heading, leftEncoder, rightEncoder, leftWallDistance
     global rightWallDistance, frontWallDistance, mag
     global irLevelLeft, irLevelRight, touchSensor
+    global counter, counter_max
 
     global BP
     global mpu
@@ -65,7 +71,7 @@ def updateSensors():
     irPinLeft = 0
     irPinRight = 1
 
-    period = 0.002
+    period = 0 #0.002
 
     #Plug in the left motor to port A, the right to port B, touch sensor
     #to port 1, Gyro to port 2 and if required the NXT ultra sonic to port 3
@@ -74,56 +80,61 @@ def updateSensors():
     except Exception as e:
       print ("Error:{}".format(e))
 
-    time.sleep(period)
+    #time.sleep(period)
 
     try:
       rightWallDistance = grovepi.ultrasonicRead(rightUltraPin)
     except Exception as e:
       print ("Error:{}".format(e))
 
-    time.sleep(period)
+    #time.sleep(period)
 
     try:
       frontWallDistance = grovepi.ultrasonicRead(frontUltraPin)
     except Exception as e:
       print ("Error:{}".format(e))
 
-    time.sleep(period)
+    #time.sleep(period)
 
     try:
       leftEncoder = BP.get_motor_encoder(BP.PORT_A)
     except IOError as error:
       print("Left Encoder: " + str(error))
 
-    time.sleep(period)
+    #time.sleep(period)
 
     try:
       rightEncoder = BP.get_motor_encoder(BP.PORT_B)
     except IOError as error:
       print("Right Encoder: " + str(error))
 
-    time.sleep(period)
+    #time.sleep(period)
 
-    try:
-      mag = mpu.readMagnet()
-    except:     #not sure what exception error for this would be
-      pass
+    
+    if(counter < counter_max):
+        counter += 1
+    else:
+        counter = 0
+        try:
+          mag = mpu.readMagnet()
+        except:     #not sure what exception error for this would be
+          pass
 
-    time.sleep(period)
+    #time.sleep(period)
 
     try:
       irLevelLeft = grovepi.analogRead(irPinLeft); #reads the left IR sensor
     except brickpi3.SensorError as error:
       print("Left IR: " + str(error))
 
-    time.sleep(period)
+    #time.sleep(period)
 
     try:
       irLevelRight = grovepi.analogRead(irPinRight); #reads the right IR sensor
     except brickpi3.SensorError as error:
       print("Right IR: " + str(error))
 
-    time.sleep(period)
+    #time.sleep(period)
 
     try:
       heading = BP.get_sensor(BP.PORT_2) - heading_offset
@@ -131,7 +142,7 @@ def updateSensors():
       heading = 0
       print("Heading:" + str(error))
 
-    time.sleep(period)
+    #time.sleep(period)
 
     # try:
     #   touchSensor = BP.get_sensor(BP.PORT_1) #1 or 0
@@ -169,13 +180,13 @@ def getRightWallDistance():
 
 def getIRLevelLeft():
     global irLevelLeft
-    #return float(irLevelLeft); # not sure on the units
-    return 0
+    return float(irLevelLeft); # not sure on the units
+    #return 0
 
 def getIRLevelRight():
     global irLevelRight
-    #return float(irLevelRight); # not sure on the units
-    return 0
+    return float(irLevelRight); # not sure on the units
+    #return 0
 
 def getMagneticLevel():
     global mag
@@ -223,8 +234,10 @@ if __name__ == '__main__':
     print("Magnitude: {:.3f}".format(getMagneticMagnitude()))
     x, y, z = getMagneticLevel()
     print("X: {:10.3f}, Y: {:10.3f}, Z: {:10.3f}".format(x, y, z))
+    print("Distance: {:10.3f}".format(hazard_detection.getMagneticDistanceFromReading(getMagneticMagnitude())))
     print("--------IR--------")
     print("Left: {:6.2f}, Right: {:6.2f}".format(getIRLevelLeft(), getIRLevelRight()))
+    print("Distance: {:10.3f}".format(hazard_detection.getIRDistanceFromReading(getIRLevelLeft())))
     print("-------GYRO-------")
     print("Heading: {:6.2f}".format(getHeading().getDegrees()))
-    time.sleep(0.25)
+    time.sleep(0.01)#.25
